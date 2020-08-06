@@ -1,0 +1,237 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+### Setup
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE)
+```
+```{r}
+library(ggplot2)
+library(cowplot)
+
+abund_thres = 1.420e-05 # 1st quantile
+stdv_thres = 5.020e-06  # 1st quantile
+max_subplots = 9
+
+
+
+do_df_hist <- function(df, title='title') {
+  titleplot = ggdraw() + draw_label(title)
+  subplots = lapply(names(df), function(x_var) {
+    p = ggplot(df) + aes_string(x_var) + geom_histogram() + scale_y_log10()
+  })
+  
+  plot_grid(titleplot, plotlist=subplots)
+}
+
+summarize = function(df, title='title') {
+  print(paste(c('rows:', 'cols:'), dim(df)))
+  print(summary(df))
+  do_df_hist(df)
+}
+
+```
+
+
+## OTU Table: Load
+
+In python, collapse by OTUs by taxon? Metadata is uniformly distributed random
+
+```{r}
+setwd('~/R_workspace/by_dataset/secret')
+
+OTU_table = data.frame(read.table('./otu_table.tsv', header=TRUE, sep="\t", row.names=1)) # TODO taxonomy
+metadata = data.frame(read.table('./metadata.tsv', header=TRUE, sep='\t', row.names=1))
+
+summarize(OTU_table)
+```
+
+
+
+### OTU Table: Remove 0 cols/rows
+
+```{r}
+num_row_old = dim(OTU_table)[1] 
+OTU_table = OTU_table[rowSums(OTU_table) > 0,]
+num_row_new = dim(OTU_table)[1]
+
+num_col_old = dim(OTU_table)[2]
+OTU_table = OTU_table[, colSums(OTU_table) > 0]
+num_col_new = dim(OTU_table)[2]
+
+print(sprintf("num 0 rows dropped: %d", num_row_old - num_row_new))
+print(sprintf("num 0 cols dropped: %d", num_col_old - num_col_new))
+
+summarize(OTU_table, 'OTU_table')
+#plot(OTU_table) # TODO set limit
+
+```
+
+
+### Abundance
+
+```{r}
+abund = data.frame(apply(OTU_table, 2, function(col) col/sum(col)))
+
+summarize(abund)
+#plot(abund)
+
+abund_max = apply(abund, 1, function(row) max(row))
+summary(abund_max)
+```
+
+
+
+
+
+### Abundance standard deviation across OTU abundance
+
+```{r}
+stdv = data.frame(stdv=apply(abund, 1, function(row) sd(row)), row.names=row.names(abund))
+
+summarize(stdv)
+```
+
+
+### Frequency of OTUs across samples
+
+```{r}
+freqs = data.frame(freqs=apply(abund, 1, function(row) sum(row > 0) / length(row)))
+
+summarize(freqs)
+
+```
+
+
+### Filter by abundance
+
+
+```{r}
+num_row_old = dim(abund)[1]
+abund_abundFiltered = abund[apply(abund, MARGIN=1, function(row) any(row > abund_thres)), ]
+num_row_new = dim(abund_abundFiltered)[1]
+
+print(sprintf("num rows dropped by abundance: %d", num_row_old - num_row_new))
+
+```
+
+
+
+
+### Filter by standard deviation
+
+
+
+```{r}
+
+num_row_old = dim(abund)[1]
+abund_stdvFiltered = abund[apply(abund, MARGIN=1, function(row) sd(row) > stdv_thres), ]
+num_row_new = dim(abund_stdvFiltered)[1]
+
+print(sprintf("num rows dropped by stdv: %d", num_row_old - num_row_new))
+
+```
+
+### Filter by frequency of OTU across all samples
+
+```{r}
+
+freq_thres = 0.125
+
+freqs = apply(abund, 1, function(row) sum(row > 0) / length(row))
+abund_freqFiltered = abund[freqs > freq_thres,]
+
+print(sprintf("num rows dropped by freq: %d", nrow(abund) - nrow(abund_freqFiltered)))
+```
+
+
+### Filter by all
+
+
+```{r}
+remaining = intersect(intersect(row.names(abund_stdvFiltered), row.names(abund_abundFiltered)), row.names(abund_freqFiltered))
+print(sprintf("num rows dropped by both abundance and stdv: %d", nrow(abund) - length(remaining)))
+
+abund_filt = abund[remaining,]
+
+plot(abund_filt)
+summarize(abund_filt, 'abund_filt')
+
+```
+
+
+
+### Sample metadata
+
+
+```{r}
+
+metadata = data.frame(metadata)
+
+# TODO filter otu table based on complete metadata
+
+```
+
+### OTU correlation with continuous metadata
+
+```{r, fig.height=15} 
+
+cordf = data.frame(row.names=row.names(abund_filt))
+
+cordf$kendall = cor(t(abund_filt), metadata$a, method='kendall') # difference?
+cordf$spearman = cor(t(abund_filt), metadata$a, method='spearman')
+cordf$pearson = cor(t(abund_filt), metadata$a, method='pearson')
+
+cordf
+
+r_thres = 0.75
+
+# indices
+
+ordering = order(abs(cordf$kendall), decreasing=TRUE)
+ordering = ordering[sapply(ordering, function(index) abs(cordf$kendall[index]) > r_thres)]
+
+cordf[ordering,]
+
+# plot
+
+num_plots = min(length(ordering), max_subplots)
+
+par(mfrow=c(ceiling(num_plots/3), 3))
+
+for(i in ordering[1:num_plots]) {
+  plot(t(abund_filt[i,]), metadata$a, xlab="a", ylab="abundance (%)", main=sprintf('%s, cor=%.2f', row.names(abund_filt)[i], cordf$kendall[i]))
+}
+```
+
+
+
+### Regression and statistical test
+
+```{r}
+
+p_values = c()
+
+for(i in ordering){
+  fit = lm(t(abund_filt[i,]) ~ metadata$a)
+  summary(fit)
+  p_values = c(p_values, summary(fit)$coefficients[2,4])
+}
+
+p_values
+
+p_values_adj = p.adjust(p_values, 'BH')
+
+p_values_adj
+
+p.df = data.frame(p=p_values, p.adj=p_values_adj, row.names=row.names(cordf)[ordering])
+
+summarize(p.df)
+
+p_thres = 0.05
+
+
+
+```
