@@ -47,6 +47,9 @@ class Params:
         if params.get("tax_rank") == 'None':
             params['tax_rank'] = None
 
+        if not isinstance(params['sample_metadata'], list):
+            params['sample_metadata'] = [params['sample_metadata']]
+
         self.params = params
 
 

@@ -73,7 +73,7 @@ class OTUSampleMetadataCorrelationTest(unittest.TestCase):
             print('Test workspace was deleted')
 
     @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.DataFileUtil', new=lambda u: get_mock_dfu('17770_50samples'))
-    #@patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.run_check', new=get_mock_run_check('17770_50samples'))
+    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.run_check', new=get_mock_run_check('17770_50samples'))
     @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.KBaseReport', new=lambda u: get_mock_kbr())
     def test_your_method(self):
         ret = self.serviceImpl.run_OTUSampleMetadataCorrelation(
@@ -81,7 +81,7 @@ class OTUSampleMetadataCorrelationTest(unittest.TestCase):
                     "amp_mat_upa": "45688/2/3",
                     "col_attrmap_upa": "45688/3/1",
                     "row_attrmap_upa": None,
-                    "sample_metadata": ["Top of Casing Stickup (ft)"],
+                    "sample_metadata": "Top of Casing Stickup (ft)",
                     "otu_params": {
                         "abund_cutoff": None,
                         "sd_cutoff": None,

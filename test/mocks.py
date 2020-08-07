@@ -105,9 +105,6 @@ def get_mock_run_check(dataset):
     Avoid expensive runs of tool
     Copy over `Var.out_dir`
     '''
-    if dataset not in ['17770', 'first50', 'secret', 'dummy_10by8']:
-        raise NotImplementedError()
-
     mock_run_check = create_autospec(run_check)
 
     # side effect
@@ -115,7 +112,7 @@ def get_mock_run_check(dataset):
         logging.info('Mocking running cmd `%s`' % cmd)
 
         # test data
-        src_drpth = os.path.join(testData_dir, 'by_dataset_input', dataset, 'return/RDP_Classifier_output')
+        src_drpth = os.path.join(testData_dir, 'by_dataset_input', dataset, 'return/output')
 
         # check if it already exists
         # since app may create it before run, and
