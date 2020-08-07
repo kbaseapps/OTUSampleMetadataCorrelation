@@ -201,7 +201,7 @@
             "dropdown_options": {
                 "options": [
                     {
-                        "value": "bh",
+                        "value": "BH",
                         "display": "Benjamini-Hochberg"
                     },{
                         "value": "bonferroni",

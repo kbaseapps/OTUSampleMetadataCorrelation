@@ -21,6 +21,10 @@ RUN cd /opt && \
 curl --location https://github.com/jgm/pandoc/releases/download/2.10.1/pandoc-2.10.1-1-amd64.deb > pandoc.deb && \
 dpkg -i pandoc.deb
 
+# TODO
+# We recommend you use --use-feature=2020-resolver to test your packages with the new resolver before it becomes the default.
+RUN pip install --upgrade pip
+RUN pip install dotmap numpy==1.15.4 pandas
 
 ENV PYTHONUNBUFFERED=1
 

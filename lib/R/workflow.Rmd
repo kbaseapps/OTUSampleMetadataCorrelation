@@ -1,0 +1,282 @@
+---
+title: "OTU Correlation with Continuous Sample Metadata"
+output: html_document
+params:
+  abund_cutoff: NA
+  sd_cutoff: NA
+  freq_cutoff: NA
+  cor_cutoff: 0.5
+  cor_method: 'kendall'
+  p_adj_method: 'BH'
+  p_adj_cutoff: 0.05
+  otu_table_flpth: '~/otu_table.tsv'
+  metadata_flpth: '~/metadata.tsv'
+  out_dir: '~'
+  mcol: 1
+---
+
+### Setup
+
+```{r include=FALSE}
+knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE)
+options(max.print=60)
+```
+
+```{r}
+library(ggplot2)
+library(cowplot)
+
+max_subplots_rmd = 9
+max_subplots_file = 44
+
+# Sometimes does log scale y
+do_df_hist <- function(df, title='title') {
+  titleplot = ggdraw() + draw_label(title)
+  subplots = lapply(names(df), function(x_var) {
+    p = ggplot(df) + aes_string(x_var) + geom_histogram()
+    if(dim(df)[1] > 300) p = p + scale_y_log10()
+    p
+  })
+  
+  plot_grid(titleplot, plotlist=subplots)
+}
+
+# TODO draw vertical lines for cutoffs
+summarize = function(df, title='title') {
+  print(paste(c('rows:', 'cols:'), dim(df)))
+  print(summary(df))
+  do_df_hist(df)
+}
+
+# from Rmd YAML
+print(t(params[-1]))
+
+# flatten Rmd params
+for(nm in names(params)) {
+  assign(nm, params[[nm]])
+}
+```
+
+### Load OTU table and sample metadata
+
+In python, collapse OTUs by taxonomic rank.
+
+```{r}
+
+OTU_table = data.frame(read.table(params$otu_table_flpth, header=TRUE, sep="\t", row.names=1)) # TODO integrate taxonomy column
+metadata_full = data.frame(read.table(params$metadata_flpth, header=TRUE, sep='\t', row.names=1)) # TODO check numeric in python
+
+metadata = data.frame(metadata=metadata_full[, mcol], row.names=row.names(metadata_full)) # TODO ?
+metadata_name = row.names(metadata)[mcol]
+
+summarize(OTU_table)
+summarize(metadata)
+
+```
+
+
+
+
+
+### Remove 0 cols/rows in OTU table
+
+```{r}
+dim_old = dim(OTU_table)
+
+OTU_table = OTU_table[rowSums(OTU_table) > 0,]
+OTU_table = OTU_table[, colSums(OTU_table) > 0]
+
+print(sprintf("num 0 rows dropped: %d", dim_old[1] - nrow(OTU_table)))
+print(sprintf("num 0 cols dropped: %d", dim_old[2] - ncol(OTU_table)))
+
+
+summarize(OTU_table, 'OTU_table')
+
+```
+
+### Filter out samples with missing metadata
+
+```{r}
+
+to_keep = ! is.na(metadata$metadata)
+
+print(sprintf("num dropped samples: %d", nrow(metadata) - sum(to_keep)))
+
+
+OTU_table = OTU_table[, to_keep]
+metadata = data.frame(metadata=metadata[to_keep,], row.names=row.names(metadata)[to_keep])
+
+summarize(OTU_table)
+summarize(metadata)
+```
+
+### Transform to relative abundance (?)
+
+
+TODO: allow other transformed OTU tables besides abundance. Implementation?
+
+```{r}
+
+abund = data.frame(apply(OTU_table, 2, function(col) col/sum(col)))
+summarize(abund)
+```
+
+
+
+### Explore OTU-filtering cutoffs
+
+```{r}
+
+## Max abundance (?) ##
+
+abund_max = data.frame(abund_max=apply(abund, 1, function(row) max(row)))
+summarize(abund_max)
+
+## Standard deviation ##
+
+stdv = data.frame(stdv=apply(abund, 1, function(row) sd(row)), row.names=row.names(abund))
+summarize(stdv)
+
+
+## Frequency
+
+freqs = data.frame(freqs=apply(abund, 1, function(row) sum(row > 0) / length(row)))
+summarize(freqs)
+
+
+## Auto-assign cutoffs ##
+
+if(is.na(abund_cutoff) | abund_cutoff == 'NA') abund_cutoff = quantile(abund_max$abund_max)[2] # 1st quartile
+if(is.na(sd_cutoff) | sd_cutoff == 'NA') sd_cutoff = quantile(stdv$stdv)[2] # 1st quartile
+if(is.na(freq_cutoff) | freq_cutoff == 'NA') freq_cutoff = quantile(freqs$freqs)[2] # 1st quartile
+
+print(abund_cutoff)
+print(sd_cutoff)
+print(freq_cutoff)
+```
+
+
+### Filter OTUs by cutoffs
+
+
+```{r}
+num_row_old = nrow(abund)
+
+
+## By max abundance ##
+
+
+abund_abundFiltered = abund[apply(abund, MARGIN=1, function(row) any(row > abund_cutoff)), ]
+
+print(sprintf("num rows dropped by abundance: %d", num_row_old - nrow(abund_abundFiltered)))
+
+## By standard deviation ##
+
+abund_stdvFiltered = abund[apply(abund, MARGIN=1, function(row) sd(row) > sd_cutoff), ]
+
+print(sprintf("num rows dropped by stdv: %d", num_row_old - nrow(abund_stdvFiltered)))
+
+## By frequency ##
+
+
+abund_freqFiltered = abund[apply(abund, MARGIN=1, function(row) sum(row)/length(row) < freq_cutoff), ]
+
+print(sprintf("num rows dropped by freq: %d", nrow(abund) - nrow(abund_freqFiltered)))
+
+## Now combine all filters ##
+
+remaining = intersect(intersect(row.names(abund_stdvFiltered), row.names(abund_abundFiltered)), row.names(abund_freqFiltered))
+
+print(sprintf("num rows dropped by combined abundance, stdv, and freq: %d", num_row_old - length(remaining)))
+
+abund_filt = abund[remaining,]
+
+summarize(abund_filt, 'abund_filt')
+
+```
+
+
+
+
+### OTU correlations with metadata
+
+```{r} 
+
+cordf = data.frame(row.names=row.names(abund_filt))
+
+for(otu in row.names(cordf)) {
+  res = cor.test(as.numeric(abund_filt[otu,]), metadata$metadata, method=cor_method)
+  cordf[otu, 'cor'] = res$estimate
+  cordf[otu, 'p'] = res$p.value
+}
+
+# order/filter indices
+
+ordering = order(abs(cordf$cor), decreasing=TRUE)
+ordering = ordering[sapply(ordering, function(index) abs(cordf[index, 'cor']) > cor_cutoff)]
+
+cordf_top = cordf[ordering,]
+
+# adjust
+
+cordf_top$p_adj = p.adjust(cordf_top$p)
+cordf[ordering, 'p_adj'] = cordf_top$p_adj
+
+cordf_top
+summarize(cordf_top)
+
+```
+
+
+### Plot
+
+```{r, fig.height=15, fig.width=9.5}
+num_subplots = min(length(ordering), max_subplots_rmd)
+
+h = ceiling(num_subplots/4)
+w = 3
+
+par(mfrow=c(h, w))
+
+for(i in ordering[1:num_subplots]) {
+  plot(t(abund_filt[i,]), metadata$metadata, xlab=metadata_name, ylab="abundance (%)", main=sprintf('%s, cor=%.3f, p_adj=%.3g', row.names(cordf)[i], cordf[i,'cor'], cordf[i,'p_adj']))
+}
+
+# TODO include taxonomy in plottitle/table
+```
+
+
+
+### Output results to file
+
+```{r, message=FALSE}
+
+write.table(cordf, file=file.path(out_dir, 'cor.tsv'), sep='\t', quote=FALSE)
+
+
+
+num_plots = min(length(ordering), max_subplots_file)
+
+
+
+png(file.path(out_dir, 'cor.png'), height=h*360, width=1500)
+
+par(mfrow=c(h,w))
+
+for(i in ordering[1:num_plots]) {
+  plot(t(abund_filt[i,]), metadata$metadata, xlab=metadata_name, ylab="abundance (%)", main=sprintf('%s, cor=%.3f, p_adj=%.3g', row.names(cordf)[i], cordf[i,'cor'], cordf[i,'p_adj']))
+}
+
+dev.off()
+
+```
+
+
+
+
+
+
+
+
+
+

@@ -2,14 +2,34 @@
 import os
 import time
 import unittest
+from unittest.mock import patch
 from configparser import ConfigParser
 
 from OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl import OTUSampleMetadataCorrelation
 from OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationServer import MethodContext
 from OTUSampleMetadataCorrelation.authclient import KBaseAuth as _KBaseAuth
-
 from installed_clients.WorkspaceClient import Workspace
 
+from mocks import * # upas, mocks ...
+
+######################################
+######################################
+######### TOGGLE PATCH ###############
+######################################
+###################################### 
+do_patch = True # toggle patching for tests that can run independent of it
+
+if do_patch:
+    patch_ = patch
+    patch_dict_ = patch.dict
+
+else:
+    patch_ = lambda *a, **kwargs: lambda f: f
+    patch_dict_ = lambda *a, **kwargs: lambda f: f
+######################################
+######################################
+######################################
+######################################
 
 class OTUSampleMetadataCorrelationTest(unittest.TestCase):
 
@@ -52,16 +72,29 @@ class OTUSampleMetadataCorrelationTest(unittest.TestCase):
             cls.wsClient.delete_workspace({'workspace': cls.wsName})
             print('Test workspace was deleted')
 
-    # NOTE: According to Python unittest naming rules test method names should start from 'test'. # noqa
+    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.DataFileUtil', new=lambda u: get_mock_dfu('17770_50samples'))
+    #@patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.run_check', new=get_mock_run_check('17770_50samples'))
+    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.KBaseReport', new=lambda u: get_mock_kbr())
     def test_your_method(self):
-        # Prepare test objects in workspace if needed using
-        # self.getWsClient().save_objects({'workspace': self.getWsName(),
-        #                                  'objects': []})
-        #
-        # Run your method by
-        # ret = self.getImpl().your_method(self.getContext(), parameters...)
-        #
-        # Check returned data with
-        # self.assertEqual(ret[...], ...) or other unittest methods
-        ret = self.serviceImpl.run_OTUSampleMetadataCorrelation(self.ctx, {'workspace_name': self.wsName,
-                                                             'parameter_1': 'Hello World!'})
+        ret = self.serviceImpl.run_OTUSampleMetadataCorrelation(
+                self.ctx, {
+                    "amp_mat_upa": "45688/2/3",
+                    "col_attrmap_upa": "45688/3/1",
+                    "row_attrmap_upa": None,
+                    "sample_metadata": ["Top of Casing Stickup (ft)"],
+                    "otu_params": {
+                        "abund_cutoff": None,
+                        "sd_cutoff": None,
+                        "freq_cutoff": None,
+                        "tax_rank": "None"
+                    },
+                    "cor_params": {
+                        "cor_cutoff": 0.6,
+                        "cor_method": "pearson"
+                    },
+                    "p_adj_params": {
+                        "p_adj_method": "BH",
+                        "p_adj_cutoff": 0.05
+                    },
+                    'workspace_name': self.wsName,
+            })
