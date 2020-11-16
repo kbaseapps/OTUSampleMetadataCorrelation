@@ -4,3 +4,5 @@ sdk.cfg
 *.py.bak*
 __pycache__
 by_dataset_input/
+*.tmp
+lib/R/figure/

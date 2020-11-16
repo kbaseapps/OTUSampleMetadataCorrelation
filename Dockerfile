@@ -20,11 +20,20 @@ RUN R -e "install.packages(c('ggplot2', 'cowplot', 'knitr', 'rmarkdown'))"
 RUN cd /opt && \
 curl --location https://github.com/jgm/pandoc/releases/download/2.10.1/pandoc-2.10.1-1-amd64.deb > pandoc.deb && \
 dpkg -i pandoc.deb
+RUN echo 'disrupt caching here'
+RUN R -e "install.packages('BiocManager')"
+RUN R -e "BiocManager::install('phyloseq')"
 
 # TODO
 # We recommend you use --use-feature=2020-resolver to test your packages with the new resolver before it becomes the default.
+
 RUN pip install --upgrade pip
 RUN pip install dotmap numpy==1.15.4 pandas
+
+# Try phyloseq again here
+RUN conda install -c conda-forge -y libiconv
+ENV LD_LIBRARY_PATH=/miniconda/lib
+RUN R -e "BiocManager::install('phyloseq')" 
 
 ENV PYTHONUNBUFFERED=1
 

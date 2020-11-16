@@ -1,270 +1,535 @@
 ---
-title: "OTU Correlation with Continuous Sample Metadata"
-output: html_document
+title: "Amplicon Matrix Filtering and Pooling, and Correlation with Continuous Sample Metadata"
+output:
+  html_document:
+    theme: cerulean
+    toc: true
+    toc_depth: 1
+    toc_float: true
+    number_sections: true
+    code_folding: hide
+    code_download: true
 params:
-  abund_cutoff: NA
+  amp_mat_name: NA
+  val_cutoff: NA
   sd_cutoff: NA
-  freq_cutoff: NA
+  tax_rank: NA
   cor_cutoff: 0.5
   cor_method: 'kendall'
   p_adj_method: 'BH'
   p_adj_cutoff: 0.05
-  otu_table_flpth: '~/otu_table.tsv'
-  metadata_flpth: '~/metadata.tsv'
-  out_dir: '~'
-  mcol: 1
+#-----------------------------------
+  otu_table_flpth: NA
+  tax_table_flpth: NA  # flpth or NA. shoult not be empty-type (i.e., all '' or NA) tables 
+  metadata_flpth: NA 
+  out_dir: NA
+#-----------------------------------
+  scale: 'raw' # OTU table, one of {raw, ln, log1, log10} ... TODO this is probably not dependable
+  mcol: NA # 1-based col index of metadata. col should be numeric
+  mname: NA # sample metadata field name:w
+#-----------------------------------
+  funcs_flpth: '/kb/module/lib/R/workflow_funcs.R'
 ---
 
-### Setup
 
-```{r include=FALSE}
-knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE)
-options(max.print=60)
-```
 
-```{r}
+
+```{r init, include=FALSE}
+
 library(ggplot2)
-library(cowplot)
+library(cowplot) # for ggplot2 grid plots
+library(phyloseq)
+library(knitr)
 
-max_subplots_rmd = 9
-max_subplots_file = 44
+```
 
-# Sometimes does log scale y
-do_df_hist <- function(df, title='title') {
-  titleplot = ggdraw() + draw_label(title)
-  subplots = lapply(names(df), function(x_var) {
-    p = ggplot(df) + aes_string(x_var) + geom_histogram()
-    if(dim(df)[1] > 300) p = p + scale_y_log10()
-    p
-  })
-  
-  plot_grid(titleplot, plotlist=subplots)
-}
+```{r}
+# TODO collapsible params kable and funcdefs
 
-# TODO draw vertical lines for cutoffs
-summarize = function(df, title='title') {
-  print(paste(c('rows:', 'cols:'), dim(df)))
-  print(summary(df))
-  do_df_hist(df)
-}
+keep=c('val_cutoff', 'sd_cutoff', 'tax_rank', 'cor_cutoff', 'cor_method', 'p_adj_method', 'p_adj_cutoff')
 
-# from Rmd YAML
-print(t(params[-1]))
 
-# flatten Rmd params
+paramsdf = stack(params[keep])
+paramsdf = data.frame(row.names=paramsdf$ind, arg=paramsdf$values)
+kable(paramsdf, caption='Input Parameters')
+
+
+## Flatten Rmd params ##
 for(nm in names(params)) {
-  assign(nm, params[[nm]])
+  if(params[[nm]] == "NA") assign(nm, NA)
+  else assign(nm, params[[nm]])
 }
-```
 
-### Load OTU table and sample metadata
+################################################################################
+###### Hardcode ################################################################
+################################################################################
+    # amp_mat_name = '<INSERT AMPLICONMATRIX NAME HERE>'
+    # cor_cutoff = 0.9
+    # cor_method = 'pearson'
+    # p_adj_cutoff = 0.05
+    # mcol = 62
+    # funcs_flpth = '~/kbsdk-workspace/OTUSampleMetadataCorrelation/lib/R/workflow_funcs.R'
+    # otu_table_flpth =  '~/otu_table.tsv'
+    # tax_table_flpth = NA#'~/tax_table.tsv'
+    # metadata_flpth = '~/sample_metadata.tsv'
+    # out_dir = '~'
+################################################################################
+    
+source(funcs_flpth, local=knitr::knit_global())
+debug=FALSE
 
-In python, collapse OTUs by taxonomic rank.
-
-```{r}
-
-OTU_table = data.frame(read.table(params$otu_table_flpth, header=TRUE, sep="\t", row.names=1)) # TODO integrate taxonomy column
-metadata_full = data.frame(read.table(params$metadata_flpth, header=TRUE, sep='\t', row.names=1)) # TODO check numeric in python
-
-metadata = data.frame(metadata=metadata_full[, mcol], row.names=row.names(metadata_full)) # TODO ?
-metadata_name = row.names(metadata)[mcol]
-
-summarize(OTU_table)
-summarize(metadata)
-
-```
-
-
-
-
-
-### Remove 0 cols/rows in OTU table
-
-```{r}
-dim_old = dim(OTU_table)
-
-OTU_table = OTU_table[rowSums(OTU_table) > 0,]
-OTU_table = OTU_table[, colSums(OTU_table) > 0]
-
-print(sprintf("num 0 rows dropped: %d", dim_old[1] - nrow(OTU_table)))
-print(sprintf("num 0 cols dropped: %d", dim_old[2] - ncol(OTU_table)))
+knitr::opts_chunk$set(
+  echo=FALSE, 
+  warning=FALSE, # all warnings will be printed in the console instead of the output document
+  message=FALSE, 
+  results='asis'
+)
+options(max.print=60)
 
 
-summarize(OTU_table, 'OTU_table')
-
-```
-
-### Filter out samples with missing metadata
-
-```{r}
-
-to_keep = ! is.na(metadata$metadata)
-
-print(sprintf("num dropped samples: %d", nrow(metadata) - sum(to_keep)))
-
-
-OTU_table = OTU_table[, to_keep]
-metadata = data.frame(metadata=metadata[to_keep,], row.names=row.names(metadata)[to_keep])
-
-summarize(OTU_table)
-summarize(metadata)
-```
-
-### Transform to relative abundance (?)
-
-
-TODO: allow other transformed OTU tables besides abundance. Implementation?
-
-```{r}
-
-abund = data.frame(apply(OTU_table, 2, function(col) col/sum(col)))
-summarize(abund)
 ```
 
 
 
-### Explore OTU-filtering cutoffs
+
+
+
+
+
+# Explore Input Data from AmpliconMatrix `r amp_mat_name` {.tabset .tabset-fade}
+
+
+
+```{r load_explore}
+## Read Files ##
+
+o = phyloseq::otu_table(
+  read.table(
+    otu_table_flpth, 
+    header=TRUE, # col names in 1st line
+    sep="\t", 
+    check.names=FALSE, # don't check names can be variables (so can start with num)
+    row.names=1), 
+  taxa_are_rows=TRUE
+)
+m = phyloseq::sample_data(
+  read.table(
+    metadata_flpth, header=TRUE, sep='\t', row.names=1
+  )[,mcol,drop=FALSE]
+)
+
+if(!is.na(tax_table_flpth)) {
+  t = phyloseq::tax_table(as.matrix(read.table(tax_table_flpth, header=TRUE, sep='\t', row.names=1)))
+  if(is_empty(t)) stop('Empty taxonomy table')
+  has_tax = TRUE
+} else {
+  t = NA
+  has_tax = FALSE
+}
+
+
+ps = phyloseq(o, t, m)
+
+message(sprintf('DEBUG: %s, %s',dim(o),dim(m)))
+
+
+
+summarize_ps(ps)
+ 
+# WARNINGS:
+# Removed 14 rows containing non-finite values (stat_bin) <---  NAs?
+# Removed 6 rows containing missing values (geom_bar) <--- ?
+#
+# ^^^ due to ggplot2 data outside axis ranges of plot?
+
+
+```
+
+
+
+```{r clean}
+
+## Track dropped ##
+droptab = data.frame(row.names=c('rows', 'cols'))
+droptab$start = c(ntaxa(ps), nsamples(ps))
+
+
+# TODO since only doing missing sample metadata
+# move this to after pooling/filtering?
+
+
+
+
+## Drop for missing sample metadata ##
+
+old_colnum = nsamples(ps)
+ps = prune_samples(!is.na(sample_data(ps))[,1], ps)
+
+droptab$'dropped because of<br>missing metadata' = c(0,old_colnum-nsamples(ps))
+
+```
+
+
+```{r knit_exit_unecessary} 
+
+# TODO function for premature exiting
+# TODO inputs: text, ps=NA, droptab=NA
+
+
+# These should not happen
+# Amplicons not cleaned currently
+# Sample metadata NAs handled in wrapper app
+# if(ntaxa(ps)==0 & nsamples(ps)==0) {
+#   kable_droptab(droptab)
+#   summarize_ps(ps)
+#   knit_exit(big_red('No amplicons or samples passed cleaning!'))
+# }
+# ```
+# ```{r}
+# if(ntaxa(ps) == 0) {
+#   kable_droptab(droptab)
+#   summarize_ps(ps)
+#   knit_exit(big_red('No amplicons passed cleaning!'))
+# }
+# ```
+# ```{r}
+# if(nsamples(ps) == 0) {
+#   kable_droptab(droptab)
+#   summarize_ps(ps)
+#   knit_exit(big_red('No samples passed cleaning!'))
+# }
+```
+
+
+
+
+
+# Explore Amplicon Filtering Statistics and Their Cutoffs {.tabset .tabset-fade}
 
 ```{r}
 
-## Max abundance (?) ##
 
-abund_max = data.frame(abund_max=apply(abund, 1, function(row) max(row)))
-summarize(abund_max)
+o = otu_table(ps)
+
+## Max val ##
+max_vals = data.frame(max_vals=apply(o, MARGIN=1, function(row) max(row)), row.names=row.names(o))
 
 ## Standard deviation ##
+stdv = data.frame(stdv=apply(o, MARGIN=1, function(row) sd(row)), row.names=row.names(o))
 
-stdv = data.frame(stdv=apply(abund, 1, function(row) sd(row)), row.names=row.names(abund))
-summarize(stdv)
+## Inspect Statistics ##
+
+filtervars = data.frame(max_vals=max_vals$max_vals, stdv=stdv$stdv)
+```
+
+## Amplicon Filtering Statistics
+```{r}
+summarize_tab(filtervars, 'Amplicon Filtering Statistics', pool=FALSE, kblsmm=TRUE)
+```
+
+```{r}
+## Determine & Print Cutoffs ##
+q = 0.25 # testing  purposes
+if(is.na(val_cutoff)) val_cutoff = quantile(max_vals$max_vals, q)
+if(is.na(sd_cutoff)) sd_cutoff = quantile(stdv$stdv, q)
 
 
-## Frequency
-
-freqs = data.frame(freqs=apply(abund, 1, function(row) sum(row > 0) / length(row)))
-summarize(freqs)
-
-
-## Auto-assign cutoffs ##
-
-if(is.na(abund_cutoff) | abund_cutoff == 'NA') abund_cutoff = quantile(abund_max$abund_max)[2] # 1st quartile
-if(is.na(sd_cutoff) | sd_cutoff == 'NA') sd_cutoff = quantile(stdv$stdv)[2] # 1st quartile
-if(is.na(freq_cutoff) | freq_cutoff == 'NA') freq_cutoff = quantile(freqs$freqs)[2] # 1st quartile
-
-print(abund_cutoff)
-print(sd_cutoff)
-print(freq_cutoff)
+dfcut = data.frame(cutoff=c(val_cutoff, sd_cutoff), row.names=c('max_val', 'stdv'))
 ```
 
 
-### Filter OTUs by cutoffs
+## Cutoffs
+```{r}
+kable(dfcut, caption='Amplicon filtering cutoffs')
+```
+
+
+
+
+
+# Filter or Pool Amplicons {.tabset .tabset-fade}
 
 
 ```{r}
-num_row_old = nrow(abund)
+
+## Try by max val ##
+b_maxVal = filter_taxa(ps, function(row) max(row) >= val_cutoff)
+
+## Try by standard deviation ##
+b_stdv = filter_taxa(ps, function(row) sd(row) >= sd_cutoff)
 
 
-## By max abundance ##
+
+## Tabulate ##
+droptab$'cut off by val' = c(sum(!b_maxVal), 0)
+droptab$'cut off by stdv' = c(sum(!b_stdv), 0)
 
 
-abund_abundFiltered = abund[apply(abund, MARGIN=1, function(row) any(row > abund_cutoff)), ]
+## (Prepare to) do actual filtering by all cutoffs ##
+b = b_maxVal & b_stdv
 
-print(sprintf("num rows dropped by abundance: %d", num_row_old - nrow(abund_abundFiltered)))
+droptab$'dropped by all cutoffs combined' = c(sum(!b), 0)
+droptab$'remaining' = c(ntaxa(ps)-sum(!b),nsamples(ps))
+```
 
-## By standard deviation ##
+```{r knit_exit_filterAmplicons}
+if(sum(!b) == ntaxa(ps)) {
+  kable_droptab(droptab)
+  knit_exit(big_red('No amplicons passed filtering!'))
+}
+```
 
-abund_stdvFiltered = abund[apply(abund, MARGIN=1, function(row) sd(row) > sd_cutoff), ]
-
-print(sprintf("num rows dropped by stdv: %d", num_row_old - nrow(abund_stdvFiltered)))
-
-## By frequency ##
+```{r}
+ps = prune_taxa(b, ps)
 
 
-abund_freqFiltered = abund[apply(abund, MARGIN=1, function(row) sum(row)/length(row) < freq_cutoff), ]
+ps_ = ps
 
-print(sprintf("num rows dropped by freq: %d", nrow(abund) - nrow(abund_freqFiltered)))
+## Drop for taxonomy ##
 
-## Now combine all filters ##
+if(!is.na(tax_rank) && has_tax) {
+  old_rownum = ntaxa(ps)
+  ps = tax_glom(
+    ps, 
+    taxrank=tax_rank, 
+    NArm=FALSE, 
+    bad_empty=c()
+  )
+  
+  droptab$'reduced by tax pooling' = c(old_rownum-ntaxa(ps),0)
+}
+```
 
-remaining = intersect(intersect(row.names(abund_stdvFiltered), row.names(abund_abundFiltered)), row.names(abund_freqFiltered))
+## Summary of Amplicon Actions
+```{r}
+kable_droptab(droptab)
+```
 
-print(sprintf("num rows dropped by combined abundance, stdv, and freq: %d", num_row_old - length(remaining)))
-
-abund_filt = abund[remaining,]
-
-summarize(abund_filt, 'abund_filt')
-
+```{r}
+summarize_ps(ps, summetdat=FALSE)
 ```
 
 
 
 
-### OTU correlations with metadata
 
-```{r} 
 
-cordf = data.frame(row.names=row.names(abund_filt))
 
-for(otu in row.names(cordf)) {
-  res = cor.test(as.numeric(abund_filt[otu,]), metadata$metadata, method=cor_method)
+# Correlate Amplicon Matrix Values with Sample Metadata {.tabset .tabset-fade}
+
+```{r do_correlation_testing} 
+
+# We will call them OTUs in code for simplicity
+
+dmessage('ps before correlation testing')
+dmessage(ps)
+
+cordf = data.frame(row.names=taxa_names(ps))
+o = otu_table(ps)
+m = sample_data(ps)
+
+for(otu in taxa_names(ps)) {
+  res = cor.test(get_sample(ps,otu), m[[1]], method=cor_method)
   cordf[otu, 'cor'] = res$estimate
   cordf[otu, 'p'] = res$p.value
 }
+```
 
-# order/filter indices
+```{r knit_exit_succeedCor}
+# handle NA results
+keep = rownames(cordf)[complete.cases(cordf)]
+toss = rownames(cordf)[!complete.cases(cordf)]
 
-ordering = order(abs(cordf$cor), decreasing=TRUE)
-ordering = ordering[sapply(ordering, function(index) abs(cordf[index, 'cor']) > cor_cutoff)]
+# all NAs
+if(length(keep) == 0) {
+  knit_exit(big_red(
+    'Sorry, no amplicons that passed filtering by value and standard deviation succeeded in correlation testing. Not succeeding in correlation testing could be, for example, because of a standard deviation of 0. Please check the correlation formula and the data.'
+  ))
+# some NAs
+} else if(length(toss) > 0) {
+  cat_text(sprintf(
+    'Note: %d amplicons were dropped because they did not succeed in correlation testing. Not succeeding in correlation testing could be, for example, because of a standard deviation of 0. Please check the correlation formula and the data.', length(toss)
+  ))
+  cordf = cordf[keep,]
+  prune_taxa(keep, ps)
+}
+```
 
-cordf_top = cordf[ordering,]
+```{r}
+dmessage('cordf right after correlation testing')
+dmessage(cordf)
 
-# adjust
-
-cordf_top$p_adj = p.adjust(cordf_top$p)
-cordf[ordering, 'p_adj'] = cordf_top$p_adj
-
-cordf_top
-summarize(cordf_top)
-
+cat_header('Correlation Summary', lvl=2)
+summarize_tab(cordf, paste('Correlation Testing:', cor_method), pool=FALSE, kblsmm=TRUE)
 ```
 
 
-### Plot
 
-```{r, fig.height=15, fig.width=9.5}
-num_subplots = min(length(ordering), max_subplots_rmd)
+# Results by Top Amplicon Hits {.tabset .tabset-fade}
 
-h = ceiling(num_subplots/4)
-w = 3
+```{r}
+## Order/filter cordf by ps indices ##
+inds_top = order(abs(cordf$cor), decreasing=TRUE)
+inds_top = inds_top[sapply(inds_top, function(i) abs(cordf[i, 'cor']) >= cor_cutoff)]
+rwnms_top = taxa_names(ps)[inds_top]
 
-par(mfrow=c(h, w))
+# dmessage(sprintf('INDS_TOP LENGTH: %d', length(inds_top)))
+```
 
-for(i in ordering[1:num_subplots]) {
-  plot(t(abund_filt[i,]), metadata$metadata, xlab=metadata_name, ylab="abundance (%)", main=sprintf('%s, cor=%.3f, p_adj=%.3g', row.names(cordf)[i], cordf[i,'cor'], cordf[i,'p_adj']))
+```{r knit_exit_corPAdjCutoffs}
+if(length(inds_top) == 0) {
+  knit_exit(big_red('Sorry, no amplicons passed correlation and p-value cutoffs.'))
 }
 
-# TODO include taxonomy in plottitle/table
+# dprint('after knit_exit for 0 inds_top')
+# dmessage(sprintf('INDS_TOP LENGTH: %d', length(inds_top)))
+```
+
+```{r}
+dmessage(ps)
+dmessage('cordf:')
+dmessage(cordf)
+
+dmessage('pruning')
+cordf_top = cordf[inds_top,]
+ps_top = prune_taxa(rwnms_top, ps)
+
+dmessage('done pruning')
+## adjust ##
+cordf_top$p_adj = p.adjust(cordf_top$p)
+
+
+## TODO header goes with `summarize_tab`
+cat_header('Correlation Summary', lvl=2)
+summarize_tab(cordf_top, 'Top Correlation Hits', pool=FALSE, kblsmm=TRUE)
+
+dmessage('summarizing ps')
+summarize_ps(ps_top, title='Final Amplicon Matrix', summetdat=FALSE) # TODO include min/max vline
+
+```
+
+
+```{r}
+### Determine size of upcoming Rmd figure
+
+max_subplots = 15
+num_subplots = min(length(inds_top), max_subplots)
+
+c = 3
+r = ceiling(num_subplots/c)
+
+w_perPlot = 3
+h_perPlot = 4
+
+w_rmd = w_perPlot * c
+h_rmd = h_perPlot * r
+
+dprint(w_rmd)
+dprint(h_rmd)
+
+
 ```
 
 
 
+
+
+# Plot Top Amplicon Hits {.tabset .tabset-fade}
+
+```{r, fig.height=h_rmd, fig.width=w_rmd}
+
+## Get vectors for top hits ##
+
+o = otu_table(ps_top)
+m = sample_data(ps_top)
+otus = taxa_names(ps_top)
+if(has_tax) taxs = cat_tax(tax_table(ps_top)) # TODO newlines for long tax, by num char
+cors = cordf_top$cor
+p_adjs = cordf_top$p_adj
+
+## Labels ##
+
+xlab = sprintf('sample_data$"%s"', colnames(m)[1])
+ylab = 'amplicon val' #if(scale=='raw') 'rel abund (%)' else 'amplicon val' # TODO safe assumption?
+cex = 0.8
+
+title = function(ind) {
+  # get subplot title
+  # with or without tax
+  if(has_tax)
+    sprintf('id=%s\ntax=%s\ncor=%.3g\np_adj=%.3g', otus[i], taxs[i], cors[i], p_adjs[i])
+  else
+    sprintf('id=%s\ncor=%.3g\np_adj=%.3g', otus[i], cors[i], p_adjs[i])
+}
+
+## Plot ##
+
+top = if(has_tax) 2 else 1
+par(mfrow=c(r, c), mar=par()$mar+c(-1,0,top,0))
+
+for(i in 1:num_subplots) {
+  plot(
+    m[[1]], 
+    o[i,] * 100,
+    xlab=xlab, 
+    ylab=ylab, 
+    main=title(i),
+    cex.main=cex,
+    cex.lab=cex
+  )
+}
+
+```
+
+
+
+[comment]: # -------------------------------------------------------------------
+[comment]: # Write out
+[comment]: # -------------------------------------------------------------------
+
+
+```{r, include=FALSE}
 ### Output results to file
 
-```{r, message=FALSE}
-
-write.table(cordf, file=file.path(out_dir, 'cor.tsv'), sep='\t', quote=FALSE)
-
-
-
-num_plots = min(length(ordering), max_subplots_file)
+## Correlation table ##
+write.table(cordf_top, file=file.path(out_dir, 'cor.tsv'), sep='\t', quote=FALSE)
 
 
 
-png(file.path(out_dir, 'cor.png'), height=h*360, width=1500)
+## Determine PNG size ##
 
-par(mfrow=c(h,w))
+max_subplots = 44
+num_subplots = min(length(inds_top), max_subplots)
 
-for(i in ordering[1:num_plots]) {
-  plot(t(abund_filt[i,]), metadata$metadata, xlab=metadata_name, ylab="abundance (%)", main=sprintf('%s, cor=%.3f, p_adj=%.3g', row.names(cordf)[i], cordf[i,'cor'], cordf[i,'p_adj']))
+c = 3
+r = ceiling(num_subplots/c)
+
+w_perPlot = 400
+h_perPlot = 400
+  
+w_png = w_perPlot * c
+h_png = h_perPlot * r
+
+print(w_png)
+print(h_png)
+
+
+## PNG ##
+
+png(file.path(out_dir, 'cor.png'), height=h_png, width=w_png)
+
+par(mfrow=c(r,c))
+
+for(i in 1:num_subplots) {
+  plot(
+    m[[1]], 
+    o[i,] * 100,
+    xlab=xlab, 
+    ylab=ylab, 
+    main=title(i),
+    cex.main=cex,
+    cex.lab=cex
+  )
 }
 
 dev.off()

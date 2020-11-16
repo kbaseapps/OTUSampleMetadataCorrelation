@@ -5,24 +5,42 @@ from .dprint import dprint
 
 
 DEFAULTS = dict(
-    abund_cutoff=None,
+    val_cutoff=None,
     sd_cutoff=None,
-    freq_cutoff=None,
+    #freq_cutoff=None,
+    tax_rank=None,
+    tax_field=None,
     cor_cutoff=0.5,
     cor_method='kendall',
     p_adj_method='BH',
     p_adj_cutoff=0.05,
 )
 
+
+NON_DEFAULTS = [
+    'amp_mat_upa',
+    'sample_metadata',
+    'workspace_id',
+    'workspace_name'
+]
+
+DEFAULTS_TO_NOT_PASS = [ # default-packed params, but not passing to Rmd as arg
+   'tax_field',
+]
+
 TYPES = dict(
-    abund_cutoff=float,
+    val_cutoff=float,
     sd_cutoff=float,
-    freq_cutoff=float,
+    #freq_cutoff=float,
+    tax_rank=str,
+    tax_field=str,
     cor_cutoff=float,
     cor_method=str,
     p_adj_method=str,
     p_adj_cutoff=float,
 )
+
+NULL_VALS = ['None', '', None]
 
 class Params:
     '''
@@ -37,20 +55,41 @@ class Params:
 
     def __init__(self, params):
 
-        ## TODO validation
-
-        ## ungroup
+        # ungroup 
         params = flatten(params)
         
 
-        ## custom transformations to internal representation ##
-        if params.get("tax_rank") == 'None':
-            params['tax_rank'] = None
+        ##
+        ## Custom transformations to internal representation ##
 
+
+        # rep this as list for now
+        # thought we'd do multiple sample metadata fields one day
         if not isinstance(params['sample_metadata'], list):
             params['sample_metadata'] = [params['sample_metadata']]
 
+        if params.get("tax_rank") in NULL_VALS:
+            params['tax_rank'] = None
+        if params['tax_field'] in NULL_VALS:
+            params['tax_field'] = None
+
+        # if either tax_rank or tax_field are None,
+        # the other is conceptually None
+        if params.get('tax_rank') is None:
+            params['tax_field'] = None
+        if params.get('tax_field') is None:
+            params['tax_rank'] = None
+
+        self._validate(params)
+
         self.params = params
+
+
+    def _validate(self, params):
+        # make sure nothing misspelled passed in
+        for p in params:
+            if p not in DEFAULTS and p not in NON_DEFAULTS:
+                raise Exception(p)
 
 
     def cmd_params_l(self) -> list:
@@ -58,7 +97,9 @@ class Params:
         l = []
 
         for k in DEFAULTS.keys():
-            if self.params[k] != DEFAULTS[k]:
+            if k in DEFAULTS_TO_NOT_PASS:
+                continue # some default-backed, like tax_field, aren't passed to Rmd
+            if self.getd(k) != DEFAULTS[k]:
                 s = k + '='
                 s += str(self.params[k]) if TYPES[k] is float else "'%s'" % self.params[k]
                 l += [s]
@@ -69,14 +110,27 @@ class Params:
 
 
 
+    # TODO don't use this
     def get(self, key):
         return self.params.get(key)
-
+    
         
     def __contains__(self, key):
         return key in self.params
 
+
+
+    def getd(self, key):
+        # TODO switch to this
+        if key not in DEFAULTS:
+            raise Exception("Key `%s` not default-backed, so can't use params.getd()" % key)
+        return self.params.get(key, DEFAULTS[key])
+
+
+
     def __getitem__(self, key):
+        if key in DEFAULTS:
+            raise Exception("Key `%s` is default-backed, thus optional, so you should use params.getd()" % key)
         return self.params[key]
 
 

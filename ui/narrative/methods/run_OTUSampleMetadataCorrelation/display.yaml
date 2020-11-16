@@ -4,7 +4,7 @@
 name: Correlate OTUs with Sample Metadata
 
 tooltip: |
-    Group or filter OTUs from OTU table, then correlate with sample metadata
+    Pool or filter OTUs from OTU table, then correlate with sample metadata
 
 screenshots: []
 
@@ -28,42 +28,32 @@ parameters :
         ui-name : |
             AmpliconMatrix
         short-hint : | 
-            AmpliconMatrix containing OTU table
-    col_attrmap_upa:
-        ui-name : |
-            Column AttributeMapping
-        short-hint : | 
-            Column AttributeMapping containing sample metadata
-    row_attrmap_upa :
-        ui-name : |
-            Row AttributeMapping<br>(optional)
-        short-hint : | 
-            Row AttributeMapping containing OTU metadata. This is useful if it has taxonomy annotations and one desires pooling OTUs by taxonomic rank
+            <code>AmpliconMatrix</code> with table of amplicon abundance or transformed abundance data
     sample_metadata :
         ui-name: |
             Sample metadata
         short-hint: |
-            Sample metadata, from column AttributeMapping, to perform OTU correlation and linear regression against
+            Column <code>AttributeMapping</code>'s attribute containing sample metadata to perform OTU correlation against
     tax_rank :
         ui-name : |
             Pool by<br>taxonomic rank
         short-hint : | 
-            Pool OTUs based on this taxonomic rank. Default, <code>None</code>, is to not do anything 
+            Pool OTUs based on this taxonomic rank. Default, leaving blank and value of <code>None</code>, is to not do anything 
+    tax_field:
+        ui-name: |
+            Taxonomy field
+        short-hint: |
+            Row <code>AttributeMapping</code>'s attribute containing amplicons' taxonomy assignments. This is required in order to use preceding taxonomic rank parameter 
     abund_cutoff:
         ui-name : |
-            Abundance cutoff
+            [Transformed] abundance cutoff
         short-hint : | 
-            Filter out OTUs that do not meet this abundance threshold in at least one sample. Default is 1st quartile
+            Filter out OTUs that do not meet this threshold in at least one sample. Default is 1st quartile
     sd_cutoff:
         ui-name : |
             Standard deviation cutoff
         short-hint : | 
             Filter out OTUs that do not meet this abundance standard deviation threshold. Default is 1st quartile
-    freq_cutoff:
-        ui-name : |
-            Frequency cutoff
-        short-hint : | 
-            Filter out OTUs that do not occur with at least this frequency across samples. Default is 1st quartile
     cor_cutoff:
         ui-name : |
             Correlation cutoff
@@ -73,7 +63,7 @@ parameters :
         ui-name : |
             Correlation method
         short-hint : | 
-            Correlation method. Kendall's correlation method does not assume linearity
+            Correlation method
     p_adj_method:
         ui-name : |
             Multiple testing<br>adjustment method
@@ -88,7 +78,7 @@ parameters :
 parameter-groups:
     otu_params:
         ui-name : |
-            OTU manipulation<br>and filtering
+            OTU pooling<br>and filtering
         short-hint : |
             Select a smaller number of OTUs or pooled OTUs to look at
     cor_params:
@@ -105,10 +95,63 @@ parameter-groups:
 
 
 description : |
-    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed pulvinar efficitur felis, quis tincidunt sem congue at. Vivamus ornare feugiat faucibus. Fusce tincidunt mattis nunc, nec varius purus convallis quis. Nulla facilisi. In at magna dolor. Suspendisse sit amet felis at arcu auctor dapibus vitae pharetra dui. Nam semper mi quis tortor fermentum mollis. Donec a arcu pharetra, rutrum dolor vitae, rutrum mauris. Donec ornare fringilla sagittis. Nam laoreet est in elementum malesuada. Vestibulum id mi eget urna hendrerit feugiat. Donec et ultrices nulla. Phasellus diam eros, dapibus at tempus nec, semper vel ante.</p>
 
-    <p>Curabitur auctor, metus at tristique euismod, odio elit tincidunt neque, a facilisis sem massa convallis dolor. Interdum et malesuada fames ac ante ipsum primis in faucibus. Nunc ut hendrerit tellus. Nunc lacinia laoreet finibus. Etiam vitae sagittis enim. Fusce consectetur porta est eu pretium. In hac habitasse platea dictumst. Integer pellentesque sit amet sapien id venenatis. Nullam ac risus at orci eleifend aliquet. Vestibulum elit purus, euismod a nibh quis, pellentesque semper leo. Curabitur ullamcorper felis hendrerit nunc egestas, sit amet pharetra sapien porttitor. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Maecenas hendrerit ipsum a ligula aliquet vestibulum. Duis a ante urna. Aenean ante neque, rhoncus id luctus ut, accumsan vel nunc.</p>
+    <!--------------------------------------------------------------------------------------------->
+    <h2>
+    App Behavior
+    </h2>
 
-    <p>Pellentesque accumsan aliquet magna, id consectetur tellus condimentum eu. Suspendisse elit dui, ornare ac leo eget, tincidunt feugiat orci. Maecenas auctor gravida lacinia. Mauris interdum nisi vel gravida varius. Nullam tempus, purus eget posuere aliquet, odio elit semper massa, quis facilisis massa odio vitae lacus. Fusce varius enim a mi vehicula tempus. Maecenas faucibus tellus ipsum, at venenatis ipsum auctor et. Suspendisse sem mi, dignissim id porta efficitur, auctor eget magna. Vivamus varius purus nulla, porttitor euismod lorem cursus quis. Nulla sit amet eros nec sem ultrices pulvinar.</p>
+    <p>
+    <b>This app is still prototypical!</b> 
+    Currently it aims to cover 'happy paths' and may be jenky. 
+    </p>
 
-    <p>Special thanks to P. Weisenhorn and the author of <a href="https://rstudio-pubs-static.s3.amazonaws.com/343284_cbadd2f3b7cd42f3aced2d3f42dc6d33.html#tips_for_this_workshop">this tutorial</a> for their guidance in creating the script for this app.</p>
+    <p>
+    This app requires an input <code>AmpliconMatrix</code> with a column <code>AttributeMapping</code>
+    containing the sample metadata to correlate amplicons' values against.
+    If that <code>AmpliconMatrix</code> also has a row <code>AttributeMapping</code> containing taxonomy assignments,
+    then pooling amplicons by taxonomy can be done.
+    </p>
+
+    <p>
+    This app requires a sample metadata field with values with a minimum of 5, non-missing values.
+    'Missing' values are represented by null, 'None', etc., where a number usually is.
+    </p>
+
+    <p>
+    This app expects "canonical" or near "canonical" taxonomy strings in order to pool amplicons by taxonomy well.
+    In this case, that means taxonomies with assignments in the domain, phylum, class, order, family, genus, and species ranks.
+    The ranks should be semicolon delimited.
+    Incomplete ranks is accepted.
+    To obtain suitable taxonomic assignments, the RDP Classifier app can be run. 
+    </p>
+
+    <p>
+    Possibly upcoming features: 
+    (1) Choosing the amplicon maximum value and amplicon SD cutoff by quantile as well
+    as value using checkboxes in the UI, 
+    (2) filtering by frequency. 
+    Some features are left off because of dev/time resources.
+    </p>
+
+    <!--------------------------------------------------------------------------------------------->
+    <h2>
+    Acknowledgement
+    </h2>
+
+    <p>
+    Special thanks to P. Weisenhorn for designing the workflow of this app and very helpful comments,
+    and thanks to K. Dill-McFarland for  
+    <a href="https://rstudio-pubs-static.s3.amazonaws.com/343284_cbadd2f3b7cd42f3aced2d3f42dc6d33.html">this tutorial</a>
+    (<a href="https://rpubs.com/dillmcfarlan/R_microbiotaSOP">alternative link</a>).
+    </p>
+
+    <br><br>
+
+publications:
+
+    -
+        display-text: |
+            phyloseq: An R package for reproducible interactive analysis and graphics of microbiome census data. Paul J. McMurdie and Susan Holmes (2013) PLoS ONE 8(4):e61217.
+        link: |
+            http://dx.plos.org/10.1371/journal.pone.0061217

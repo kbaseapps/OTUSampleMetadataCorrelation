@@ -19,7 +19,9 @@ from .util.params import Params
 from .util.error import * # custom exceptions
 
 
-def run_check(cmd: str): # TODO time it
+####################################################################################################
+####################################################################################################
+def run_check(cmd: str): 
     logging.info('Running cmd `%s`' % cmd)
     t0 = time.time()
     
@@ -28,7 +30,7 @@ def run_check(cmd: str): # TODO time it
 
     t = time.time() - t0
     
-    logging.info('Took %.2fmin' % (t/60))
+    logging.info('Cmd took %.2fmin and returned %d' % ((t/60),completed_proc.returncode))
 
     if completed_proc.returncode != 0:
         raise NonZeroReturnException(
@@ -37,6 +39,8 @@ def run_check(cmd: str): # TODO time it
             (cmd, completed_proc.returncode)
         )
 
+####################################################################################################
+####################################################################################################
 #END_HEADER
 
 
@@ -89,6 +93,7 @@ class OTUSampleMetadataCorrelation:
         ##
         ### params
         ####
+        #####
 
         logging.info(params)
 
@@ -101,7 +106,9 @@ class OTUSampleMetadataCorrelation:
         ##
         ### globals and directories
         ####
+        #####
 
+        # TODO
         '''
         tmp/                                        `shared_folder`
         └── run_otu_sample_metadata_<uuid>/           `run_dir`
@@ -113,15 +120,7 @@ class OTUSampleMetadataCorrelation:
             |   └── out/                            `out_dir`
             |       ├── workflow.html
             |       └── 
-            └── report/                             `report_dir`
-                ├── fig
-                |   ├── histogram.png
-                |   ├── pie.png
-                |   └── sunburst.png
-                ├── histogram_plotly.html
-                ├── pie_plotly.html
-                ├── suburst_plotly.html
-                └── report.html
+
         '''
 
         ##
@@ -131,7 +130,7 @@ class OTUSampleMetadataCorrelation:
         reset_Var() # clear all fields but `debug` and config stuff
         Var.update({
             'params': params,
-            'run_dir': os.path.join(self.shared_folder, 'run_otu_sample_metadata_' + str(uuid.uuid4())),
+            'run_dir': os.path.join(self.shared_folder, 'run_cor_' + str(uuid.uuid4())),
             'dfu': DataFileUtil(self.callback_url),
             'kbr': KBaseReport(self.callback_url),
             'warnings': [],
@@ -141,11 +140,9 @@ class OTUSampleMetadataCorrelation:
 
         Var.update({
             'return_dir': os.path.join(Var.run_dir, 'return'),
-            'report_dir': os.path.join(Var.run_dir, 'report'),
         })
 
         os.mkdir(Var.return_dir)
-        os.mkdir(Var.report_dir)
 
         Var.update({
             'out_dir': os.path.join(Var.return_dir, 'output')
@@ -154,23 +151,51 @@ class OTUSampleMetadataCorrelation:
         os.mkdir(Var.out_dir)
 
 
-
         #
         ##
         ### obj
         ####
+        #####
+        
+        do_tax_table = None not in [params.getd('tax_field'), params.getd('tax_rank')]
+
+
+        ## objs ##
+        amp_mat = AmpliconMatrix(params['amp_mat_upa'])
+        col_attrmap = AttributeMapping(amp_mat.obj['col_attributemapping_ref'], amp_mat, 2)
+        if do_tax_table: row_attrmap = AttributeMapping(amp_mat.obj['row_attributemapping_ref'], amp_mat, 1)
+
+
+        dprint('touch #%s' % os.path.join(Var.run_dir, amp_mat.name)) # debugging
+        
 
         #
-        amp_mat = AmpliconMatrix(params['amp_mat_upa'])
-        col_attrmap = AttributeMapping(params['col_attrmap_upa'])
+        ##
+        ### check
+        ####
+        #####
 
-        # define input flpths
+        amp_mat.check_data_valid()
+        col_attrmap.check_sample_metadata_valid()
+        if do_tax_table: row_attrmap.check_tax_data_valid()
+
+
+        #
+        ##
+        ### write files
+        ####
+        #####
+        
+        ## define input flpths ##
         otu_table_flpth = os.path.join(Var.return_dir, 'otu_table.tsv')
         sample_metadata_flpth = os.path.join(Var.return_dir, 'sample_metadata.tsv')
+        if do_tax_table: tax_table_flpth = os.path.join(Var.return_dir, 'tax_table.tsv')
 
-        # write input files
+        ## write input files ##
         amp_mat.to_otu_table(otu_table_flpth)
         col_attrmap.to_metadata_table(sample_metadata_flpth)
+        if do_tax_table: row_attrmap.to_tax_table(tax_table_flpth)
+
 
 
 
@@ -178,6 +203,7 @@ class OTUSampleMetadataCorrelation:
         ##
         ### cmd
         ####
+        #####
 
         out_html_flpth = os.path.join(Var.out_dir, 'workflow.html') # generated from Rmd
 
@@ -187,11 +213,16 @@ class OTUSampleMetadataCorrelation:
             "metadata_flpth='%s'" % sample_metadata_flpth,
             "out_dir='%s'" % Var.out_dir,
             "mcol=%d" % col_attrmap.attribute_index_1based(Var.params['sample_metadata'][0]),
+            "scale='%s'" % amp_mat.obj['scale'],
+        ])
+
+        if do_tax_table: pl.extend([
+            "tax_table_flpth='%s'" % tax_table_flpth
         ])
 
         cmd = '''\
-R -e "rmarkdown::render('%s', output_format='html_document', output_file='%s', params=list(%s))"''' \
-% (Var.rmd_flpth, out_html_flpth, ', '.join(pl))
+R -e "rmarkdown::render('%s', output_format='html_document', output_file='%s', params=list(amp_mat_name='%s', %s))"''' \
+% (Var.rmd_flpth, out_html_flpth, amp_mat.name, ', '.join(pl))
 
 
         #
@@ -210,6 +241,7 @@ R -e "rmarkdown::render('%s', output_format='html_document', output_file='%s', p
         ##
         ### run
         ####
+        #####
 
         run_check(cmd)
 
@@ -222,6 +254,7 @@ R -e "rmarkdown::render('%s', output_format='html_document', output_file='%s', p
         ## report
         ###
         ####
+        #####
 
         html_links = [{
             'path': Var.out_dir,

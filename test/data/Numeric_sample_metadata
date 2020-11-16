@@ -1,0 +1,131 @@
+====================================================================================================
+For the ENIGMA 17770by511 data
+====================================================================================================
+
+Numeric and NaN
+---------------
+
+Top of Casing Stickup (ft)
+
+
+
+
+
+====================================================================================================
+For the ENIGMA 50by30 data
+====================================================================================================
+
+
+
+
+Purely numeric:
+---------------
+Latitude
+Longitude
+Depth (cm bgs)
+Conductivity (mS/cm)
+Redox Potential  (?)
+pH
+AODC (cells/g)
+Organic Carbon (mg/g dry weight)
+Top of Casing Stickup (ft)
+Top of Casing Elevation (ft AMSL)
+Ground Elevation (ft AMSL)
+Boring (ft BGS)
+Screened Interval (ft)
+Screen Start Depth (ft BGS)
+Screen End Depth (ft BGS)
+Screen Top Elevation (ft AMSL)
+Screen Bottom Elevation (ft AMSL)
+Well Casing Depth (ft BGS)
+
+
+
+
+
+
+
+Numeric or NaN (but not purely either)
+---------------------------------------
+Well Casing OD (in)
+Well Casing ID (in)
+Drive Casing ID (in)
+Drive Casing OD (in)
+Drive Casing End Depth (ft BGS)
+Packing Depth Start (ft BGS)
+Packing Depth End (ft BGS)
+TopofWeatheredBedrock (ft BGS)
+TopofFreshBedrock (ft BGS)
+Upper Seal Start Depth (ft BGS)
+Upper Seal End Depth (ft BGS)
+
+
+
+
+
+Numeric with NaN (but could be all NaNs):
+-----------------------------------------
+Latitude
+Longitude
+Depth (cm bgs)
+Recovery Factor
+Method
+Fraction
+Replicate
+Maturation Time
+Treatment
+Temperature (Celsius)
+Moisture (%)
+Pore Water Extraction (microliters)
+Conductivity (mS/cm)
+Redox Potential  (?)
+pH
+AODC (cells/g)
+Organic Carbon (mg/g dry weight)
+Top of Casing Stickup (ft)
+Top of Casing Elevation (ft AMSL)
+Ground Elevation (ft AMSL)
+Boring (ft BGS)
+Screened Interval (ft)
+Screen Start Depth (ft BGS)
+Screen End Depth (ft BGS)
+Screen Top Elevation (ft AMSL)
+Screen Bottom Elevation (ft AMSL)
+Well Casing OD (in)
+Well Casing ID (in)
+Well Casing Depth (ft BGS)
+Drive Casing ID (in)
+Drive Casing OD (in)
+Drive Casing Start Depth (ft BGS)
+Drive Casing End Depth (ft BGS)
+Packing Depth Start (ft BGS)
+Packing Depth End (ft BGS)
+TopofWeatheredBedrock (ft BGS)
+TopofFreshBedrock (ft BGS)
+Fractures/Cavities/WaterBreaks
+Other Name
+Screened
+Open
+Well Status
+Condition
+Origination or Plug/Abandon
+Min Water Level (ft AMSL)
+Average Water Level (ft AMSL)
+Max Water Level (ft AMSL)
+Upper Seal Start Depth (ft BGS)
+Upper Seal End Depth (ft BGS)
+Lower Seal Start Depth (ft BGS)
+Lower Seal End Depth (ft BGS)
+Open Casing Type
+Open Casing OD (in)
+Open Casing ID (in)
+Open Casing Depth (ft BGS)
+Open Hole Diameter (in)
+Open Hole Depth (ft BGS)
+Open Interval Start Depth (ft BGS)
+Open Interval End Depth (ft BGS)
+Open Interval Diameter (in)
+Rock Formation
+
+
+

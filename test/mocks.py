@@ -24,32 +24,36 @@ testData_dir = '/kb/module/test/data'
 ####################################################################################################
 ################################ CI ################################################################
 ####################################################################################################
-_17770_AmpMat = '48666/9/8' # accessory AmpliconMatrix to AmpliconSet
-_17770_AttrMap = '48666/8/8' # accessory row AttributeMapping to AmpliconMatrix
+enigma50by30_noAttrMaps_noSampleSet = '55136/4/1' # AmpliconMatrix
 
-first50 = "48402/9/2" # AmpliconSet containing first 50 of 17770 entries. row AttributeMapping has all 1770 entries (?)
+enigma50by30 = '55136/15/1' # AmpliconMatrix
+enigma50by30_rowAttrMap = '55136/11/1'
+enigma50by30_colAttrMap = '55136/14/1'
 
-secret_AmpMat = '49926/5/2' # AmpliconMatrix. No row AttributeMapping. Do not share
+enigma50by30_noSampleSet = '55136/17/1' # AmpliconMatrix
 
-secret_wRDP_AmpMat = '49926/5/12' # AmpliconMatrix. With row AttributeMapping with taxonomy. Do not share
-secret_wRDP_colAttrMap = '49226/8/1' # col AttributeMapping. Do not share
+enigma17770by511 = '55136/26/1' # AmpliconMatrix
+enigma17770by511_rowAttrMap = '55136/19/1'
+enigma17770by511_colAttrMap = '55136/25/1'
 
+enigma50by30_RDPClsf = '55136/28/1' # AmpMat
+enigma50by30_RDPClsf_rowAttrMap = '55136/11/2' # AttrMap
 
-####################################################################################################
-############################# appdev ###############################################################
-####################################################################################################
-
-_17770_50samples_AmpMat = "45688/2/3"
-_17770_50samples_colAttrMap = "45688/3/1"
+enigma17770by511_RDPClsf = '55628/25/2'
+enigma17770by511_RDPClsf_rowAttrMap = '55628/27/5'
 
 ####################################################################################################
 ########################## dummy ###################################################################
 ####################################################################################################
-dummy_10by8_AmpMat_noRowAttrMap = 'dummy/10by8/AmpMat_noRowAttrMap'
-dummy_10by8_AmpMat_wRowAttrMap = 'dummy/10by8/AmpMat_wRowAttrMap'
-dummy_10by8_AttrMap = 'dummy/10by8/AttrMap'
+#dummy_10by8_AmpMat_noRowAttrMap = 'dummy/10by8/AmpMat_noRowAttrMap'
+#dummy_10by8_AmpMat_wRowAttrMap = 'dummy/10by8/AmpMat_wRowAttrMap'
+dummy10by8 = 'dummy/10by8/AmpMat'
+dummy10by8_rowAttrMap = 'dummy/10by8/rowAttrMap'
 
 
+####################################################################################################
+####################################################################################################
+####################################################################################################
 
 
 
@@ -77,17 +81,24 @@ def get_mock_dfu(dataset):
     def mock_dfu_get_objects(params):
         logging.info('Mocking `dfu.get_objects` with `params=%s`' % str(params))
 
-        upa = params['object_refs'][0]
+        upa = params['object_refs'][0].split(';')[-1]
         flnm = {
-            _17770_AmpMat: 'get_objects_AmpliconMatrix.json',
-            _17770_AttrMap: 'get_objects_AttributeMapping.json',
-            _17770_50samples_AmpMat: 'get_objects_AmpliconMatrix.json',
-            _17770_50samples_colAttrMap: 'get_objects_AttributeMapping.json',
-            secret_AmpMat: 'get_objects_AmpliconMatrix.json',
-            dummy_10by8_AmpMat_wRowAttrMap: 'get_objects_AmpliconMatrix_wRowAttrMap.json',
-            dummy_10by8_AmpMat_noRowAttrMap: 'get_objects_AmpliconMatrix_noRowAttrMap.json',
-            dummy_10by8_AttrMap: 'get_objects_AttributeMapping.json',
-            }[upa]
+            enigma50by30: 'AmpliconMatrix.json',
+            enigma50by30_rowAttrMap : 'row_AttributeMapping.json',
+            enigma50by30_colAttrMap: 'col_AttributeMapping.json',
+            enigma50by30_RDPClsf: 'AmpliconMatrix.json',
+            enigma50by30_RDPClsf_rowAttrMap: 'row_AttributeMapping.json',
+            enigma50by30_noSampleSet: 'AmpliconMatrix.json',
+            enigma50by30_noAttrMaps_noSampleSet : 'AmpliconMatrix.json',
+            enigma17770by511: 'AmpliconMatrix.json',
+            enigma17770by511_rowAttrMap: 'row_AttributeMapping.json',
+            enigma17770by511_colAttrMap: 'col_AttributeMapping.json',
+            enigma17770by511_RDPClsf: 'AmpliconMatrix.json',
+            enigma17770by511_RDPClsf_rowAttrMap: 'row_AttributeMapping.json',
+            dummy10by8: 'AmpliconMatrix.json',
+            dummy10by8_rowAttrMap: 'row_AttributeMapping.json',
+            #dummy10by8_colAttrMap: 'col_AttributeMapping.json',
+        }[upa]
         flpth = os.path.join(testData_dir, 'by_dataset_input', dataset, 'get_objects', flnm)
 
         with open(flpth) as f:
@@ -150,13 +161,6 @@ def get_mock_kbr(dataset=None):
     return mock_kbr
 
 
-
-
-####################################################################################################
-########### allow all UPAs, including _17770* variables, to be imported with * #####################
-####################################################################################################
-substr_l =['17770', 'first50', 'secret', 'dummy', 'mock', 'testData_dir'] 
-__all__ = [x for x in dir() if any([substr in x for substr in substr_l])]
 
 
 
