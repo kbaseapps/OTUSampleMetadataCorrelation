@@ -6,3 +6,4 @@ __pycache__
 by_dataset_input/
 *.tmp
 lib/R/figure/
+lib/R/workflow.html

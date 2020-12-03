@@ -143,12 +143,19 @@ drop_NA_cols = function(t) {
 ############################
 cat_tax = function(t) {
 ############################
-  t = drop_NA_cols(t)
+  t = t[,complete.cases(t(t))]
 
-  if(length(t)==1 && is.na(t)) return(NA)
-
-  t[which(is.na(t))] = 'unclassified' # fill leftover NAs
+  t[which(is.na(t))] = '' # fill leftover NAs
   apply(t, MARGIN=1, function(row) paste(row, collapse=';'))
+}
+
+
+############################
+wrap_taxstr = function(taxstr, len) {
+###########################
+  taxstr = stringr::str_replace_all(taxstr, ';', '; ')
+  taxstr = stringr::str_wrap(taxstr, width=len)
+  taxstr = stringr::str_replace(taxstr, ' ', '')
 }
 
 

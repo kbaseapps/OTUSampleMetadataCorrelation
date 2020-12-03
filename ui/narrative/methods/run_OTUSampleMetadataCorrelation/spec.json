@@ -11,7 +11,7 @@
     },
     "parameter-groups": [
         {
-            "id": "otu_params",
+            "id": "amp_reduce_params",
             "parameters": [
                 "abund_cutoff",
                 "sd_cutoff",
@@ -25,16 +25,8 @@
         },{
             "id": "cor_params",
             "parameters": [
+                "cor_method",
                 "cor_cutoff",
-                "cor_method"
-            ],
-            "optional": false,
-            "advanced": true,
-            "allow_multiple": false,
-            "with_border": true
-        },{
-            "id": "p_adj_params",
-            "parameters": [
                 "p_adj_method",
                 "p_adj_cutoff"
             ],
@@ -186,7 +178,7 @@
                 "options": [
                     {
                         "value": "kendall",
-                        "display": "Kendall"
+                        "display": "Kendall-Tau"
                     },{
                         "value": "spearman",
                         "display": "Spearman"
@@ -285,14 +277,11 @@
                     "input_parameter": "p_adj_cutoff",
                     "target_property": "p_adj_cutoff"
                 },{
-                    "input_parameter": "otu_params",
-                    "target_property": "otu_params"
+                    "input_parameter": "amp_reduce_params",
+                    "target_property": "amp_reduce_params"
                 },{
                     "input_parameter": "cor_params",
                     "target_property": "cor_params"
-                },{
-                    "input_parameter": "p_adj_params",
-                    "target_property": "p_adj_params"
                 }
             ],
             "output_mapping": [

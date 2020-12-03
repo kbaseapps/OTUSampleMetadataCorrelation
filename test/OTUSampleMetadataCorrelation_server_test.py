@@ -375,10 +375,14 @@ class OTUSampleMetadataCorrelationTest(unittest.TestCase):
 
 """
 Stuff to test:
-    * invalid metadata, tax table (different ways of invalid, numeric and missing)
+    * unit test invalid metadata, tax table, amplicon matrix (different ways of invalid, numeric and missing)
     * unit tests?
-    * variable length tax
-    * CHECK pooling by tax works. sometimes amplicon vals all 0s
+    * unit test tax pooling
+    * nothing passes correlation filtering (integration)
+    * rand param gen?
+
+TODOs:
+    * show correlation filtering table even if nothing passes at some point?
 """
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -395,15 +399,12 @@ for key, value in OTUSampleMetadataCorrelationTest.__dict__.items():
 
 taxonomy_tests = ['test_large_wTax', 'test_large_wTax_RDPClsf', 'test_small_wTax', 'test_small_wTax_RDPClsf'] # TODO unit test tax parser
 happy_path_tests = ['test_happy_large_defaultParams', 'test_happy_large_customParams', 'test_happy_small']
-knit_exit_tests = ['test_small_nonePass_filterCorPAdj', 'test_small_nonePass_filterAmplicons']
+knit_exit_tests = ['test_small_nonePass_filterAmplicons', 'test_small_nonePass_filterCor', 'test_small_nonePass_filterCorPAdj', ]
 
 run_tests = ['test_small_wTax']
-
-
 
 
 for test in all_tests:
         if test not in run_tests:
             #delattr(OTUSampleMetadataCorrelationTest, test)
             pass
-

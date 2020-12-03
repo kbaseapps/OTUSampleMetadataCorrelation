@@ -40,19 +40,23 @@ def dprint(*args, run=False, json=True, where=False, time=False, max_lines=MAX_L
     print('#' * TAG_WIDTH)
 
     if where:
-        last_frame = inspect.stack()
-        print("(file `%s`)\n(func `%s`)\n(line `%d`)" % (last_frame[1][1], last_frame[1][3], last_frame[1][2]))
+        stack = inspect.stack()
+        print("(file `%s`)\n(func `%s`)\n(line `%d`)" % (stack[1][1], stack[1][3], stack[1][2]))
     
     for arg in args:
         if time:
             t0 = _time.time()
         if run:
             print('>> ' + arg)
-            if run in ['cli', 'shell']:
+            if run in ['cli', 'shell', 'bash']:
                 completed_proc = subproc_run(arg, **subproc_run_kwargs)
                 retcode = completed_proc.returncode
             elif isinstance(run, dict):
                 print_format(eval(arg, run))
+            elif run in ['py', 'python']:
+                frame = inspect.stack()[1].frame
+                env = {**frame.f_globals, **frame.f_locals}
+                print_format(eval(arg, env))
             else:
                 assert False
         else:

@@ -1,10 +1,10 @@
 #
 # define display information
 #
-name: Correlate OTUs with Sample Metadata
+name: Correlate Amplicon Values with Continous Sample Metadata
 
 tooltip: |
-    Pool or filter OTUs from OTU table, then correlate with sample metadata
+    Filter amplicons or pool them by taxonomy, then correlate with sample metadata
 
 screenshots: []
 
@@ -76,22 +76,16 @@ parameters :
             Adjusted p-value cutoff
 
 parameter-groups:
-    otu_params:
+    amp_reduce_params:
         ui-name : |
-            OTU pooling<br>and filtering
+            Amplicon pooling and filtering
         short-hint : |
-            Select a smaller number of OTUs or pooled OTUs to look at
+            Reduce the number of amplicons to correlate against sample metadata
     cor_params:
         ui-name : |
             Correlation
         short-hint: |
-            Select OTUs based on correlation
-    p_adj_params:
-        ui-name : |
-            P-value
-        short-hint : |
-            P-value parameters
-
+            Select OTUs based on correlation and p-value
 
 
 description : |
@@ -103,7 +97,7 @@ description : |
 
     <p>
     <b>This app is still prototypical!</b> 
-    Currently it aims to cover 'happy paths' and may be jenky. 
+    Currently it aims to cover 'happy paths'. 
     </p>
 
     <p>
@@ -115,22 +109,22 @@ description : |
 
     <p>
     This app requires a sample metadata field with values with a minimum of 5, non-missing values.
-    'Missing' values are represented by null, 'None', etc., where a number usually is.
+    'Missing' values are represented by null, 'None', '', etc. (?), where a number usually is.
     </p>
 
     <p>
     This app expects "canonical" or near "canonical" taxonomy strings in order to pool amplicons by taxonomy well.
     In this case, that means taxonomies with assignments in the domain, phylum, class, order, family, genus, and species ranks.
-    The ranks should be semicolon delimited.
+    The ranks in the row AttributeMapping's taxonomy strings should be semicolon delimited.
     Incomplete ranks is accepted.
+    In the case of collapsing amplicons by taxonomy where a rank is missing, missing ranks will be considered the same taxon.
     To obtain suitable taxonomic assignments, the RDP Classifier app can be run. 
     </p>
 
     <p>
     Possibly upcoming features: 
-    (1) Choosing the amplicon maximum value and amplicon SD cutoff by quantile as well
-    as value using checkboxes in the UI, 
-    (2) filtering by frequency. 
+    (1) Choosing the cutoffs by quantile as well as by value via checkboxes in the UI, 
+    (2) other cutoffs such as frequency. 
     Some features are left off because of dev/time resources.
     </p>
 
@@ -140,7 +134,7 @@ description : |
     </h2>
 
     <p>
-    Special thanks to P. Weisenhorn for designing the workflow of this app and very helpful comments,
+    Special thanks to P. Weisenhorn for proposing this app and essential feedback,
     and thanks to K. Dill-McFarland for  
     <a href="https://rstudio-pubs-static.s3.amazonaws.com/343284_cbadd2f3b7cd42f3aced2d3f42dc6d33.html">this tutorial</a>
     (<a href="https://rpubs.com/dillmcfarlan/R_microbiotaSOP">alternative link</a>).

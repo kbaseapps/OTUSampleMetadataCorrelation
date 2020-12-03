@@ -8,62 +8,8 @@ import json
 from .config import Var
 from .dprint import dprint
 from .error import * # exceptions
+from .validate import Validate as vd
 
-
-####################################################################################################
-####################################################################################################
-def replace_missing(df, replacement=np.nan):
-    MISSING_VALS = ['', 'nan', 'None', 'null', np.nan] # None troublesome using `df.replace`
-    
-    for missing in MISSING_VALS:
-        try:
-            df = df.replace(missing, replacement)
-        except:
-            raise Exception('`%s` vs `%s`' %(missing,replacement))
-
-    return df
-
-####################################################################################################
-####################################################################################################
-def is_missingAdj_numeric(df: pd.DataFrame):
-    df = replace_missing(df)
-
-    try:
-        df.astype('float')
-        return True
-    except ValueError:
-        return False
-
-    raise
-
-####################################################################################################
-####################################################################################################
-def as_missingAdj_numeric(df: pd.DataFrame, replacement=np.nan):
-    df = replace_missing(df, replacement)
-
-    try:
-        return df.astype('float')
-    except ValueError:
-        return None
-
-    raise
-
-####################################################################################################
-####################################################################################################
-def num_nan_in_missingAdj_numeric(df: pd.DataFrame):
-    '''
-    Only works on numeric types
-    '''
-
-    df = as_missingAdj_numeric(df, replacement=np.nan)
-
-    return np.isnan(df.values).sum().sum()
-
-####################################################################################################
-####################################################################################################
-def num_emptyStr_in_missingAdj_obj(df: pd.DataFrame):
-    df = replace_missing(df, replacement='')
-    return (df=='').sum().sum()
 
 ####################################################################################################
 ####################################################################################################
@@ -96,8 +42,8 @@ class AmpliconMatrix:
 
     def to_otu_table(self, flpth=None):
         '''
+        Call validation method first
         Pass `None` to not write (for testing)
-
         `id` is first column
         '''
 
@@ -120,14 +66,11 @@ class AmpliconMatrix:
         return df # for testing
 
 
-    def check_data_valid(self):
-        df = self.to_otu_table(flpth=None)
+    def check_data_valid(self): # TODO test
+        df = np.array(self.obj['data']['values'], dtype=object)
 
-        if not is_missingAdj_numeric(df):
-            raise DataException('AmpliconMatrix data must be numeric')
-        elif num_nan_in_missingAdj_numeric(df) > 0:
-            raise DataException('Currently not supporting missing values in AmpliconMatrix')
-
+        if vd.get_num_missing(df) > 0:
+            raise ValidationException('Currently not supporting missing values in AmpliconMatrix')
 
 
     def rev_mapping(self, axis):
@@ -201,7 +144,7 @@ class AttributeMapping:
 
     #####
     #####
-    def as_canonical(self, tax_str: str):
+    def _as_canonical_l(self, tax_str: str):
         '''
         Pad or reduce taxa list to 7 slots
         '''
@@ -217,42 +160,13 @@ class AttributeMapping:
 
     #####
     #####
-    def looks_canonical(self, tax_str: str):
-        # tokenize
-        toks = [tok.strip() for tok in tax_str.split(';')]
-
-        # 7 semicolons (8 slots) only okay if ends in semicolon
-        if len(toks) == self.NSLOTS + 1:
-            if toks[-1] != '':
-                return False
-        # otherwise more than 6 semicolons (7 slots) not okay 
-        elif len(toks) > self.NSLOTS:
-            return False
-
-        return True
-
-
-    #####
-    #####
     def to_tax_table(self, flpth=None):
         self.check(1)
 
-        id2tax = self.get_id2tax()
-
-        # Warn about any non-canonical tax
-        for tax_str in id2tax.values():
-            if not self.looks_canonical(tax_str):
-                msg = (
-                    'Detecting taxonomy string `%s` that does not look canonical. '
-                    'See app documentation for more info'
-                    % tax_str
-                )
-                logging.warning(msg)
-                Var.warnings.append(msg)
-                break
+        id2tax = self.get_id2tax() # id to str
 
         id2tax = {
-            id: self.as_canonical(tax_str) 
+            id: self._as_canonical_l(tax_str) 
             for id, tax_str in id2tax.items()
         } # id to 7-slot taxa list
  
@@ -268,13 +182,13 @@ class AttributeMapping:
 
     #####
     #####
-    def check_tax_data_valid(self):
+    def check_tax_data_valid(self): # TODO test
         self.check(1)
 
-        df = self.to_tax_table(flpth=None)
+        a = self.to_tax_table(flpth=None).values
 
-        if num_emptyStr_in_missingAdj_obj(df) == df.size:
-            raise DataException(
+        if vd.get_num_missing(a) == a.size:
+            raise ValidationException(
                 'Sorry, taxonomy table, '
                 'when parsed from row AttributeMapping %s with field %s, '
                 'is empty'
@@ -285,7 +199,10 @@ class AttributeMapping:
     #####
     def get_id2tax(self):
         '''
-        Use AmpMat ids (so use reverse amp_mat.row_mapping)
+        Use AmpMat ids rather than row AttrMap ids
+        (so use reverse amp_mat.row_mapping)
+
+        Replace `null` tax strs with `''`
         '''
         self.check(1)
 
@@ -307,16 +224,23 @@ class AttributeMapping:
         # from AmpliconMatrix ids
         rev_row_mapping = self.amp_mat.rev_mapping(axis='row')
         id2tax = {rev_row_mapping[id]: instance[ind] for id, instance in self.obj['instances'].items()}
+
+        # replace `null` tax strs with `''`
+        id2tax = {id: ('' if tax is None else tax) for id, tax in id2tax.items()}
         
         return id2tax
 
 
 ######################################################################## COLUMN ####################
+
     #####
     #####
     def to_metadata_table(self, flpth=None):
         '''
         For column AttributeMapping
+
+        For now: write the whole table. 
+        Theoretically the Rmd can be modified to do multiple sample metadata
         '''
         self.check(2)
 
@@ -324,14 +248,46 @@ class AttributeMapping:
         instances = self.obj['instances']
 
         df = pd.DataFrame.from_dict(instances, orient='index')#; dprint('df', run=locals())
-        df = replace_missing(df, '')#; dprint('df', run=locals())
-        df.columns = [attribute['attribute'] for attribute in attributes]#; dprint('df', run=locals())
+        df = pd.DataFrame(
+            data=vd.replace_missing(df.values, ''), 
+            index=df.index, 
+            columns=[attribute['attribute'] for attribute in attributes]
+        )#; dprint('df', run=locals())
         
         if flpth is not None:
             df.to_csv(flpth, sep='\t')
 
         return df # for testing
 
+
+    #####
+    #####
+    def check_sample_metadata_valid(self): #TODO validate
+        '''
+        Has a minimum number of non-missing values
+        Is otherwise numerical
+        '''
+        self.check(2)
+
+        MIN_NOT_MISSING = 5 # also in app documentation
+
+        df = self.to_metadata_table()
+        df = df[[Var.params['sample_metadata'][0]]] # df with selected sample metadata
+        a = df.values
+
+        if not vd.is_numeric(a):
+            msg = (
+                "Sorry, please choose sample metadata that is numeric. "
+                "(Integers, floats, and missing.)"
+            )
+            raise ValidationException(msg)
+
+        if a.size - vd.get_num_missing(a) < MIN_NOT_MISSING:
+            msg = (
+                "Sorry, please choose sample metadata that has a minimum of %d, non-missing values"
+                % MIN_NOT_MISSING
+            )
+            raise ValidationException(msg)
 
    
     #####
@@ -347,33 +303,5 @@ class AttributeMapping:
                 return ind + 1
 
         raise Exception('`%s`' % attrName)
-
-    #####
-    #####
-    def check_sample_metadata_valid(self):
-        '''
-        Has a minimum number of non-missing values
-        Is otherwise numerical
-        '''
-        self.check(2)
-
-        MIN_NOT_MISSING = 5 # also in app documentation
-
-        m = self.to_metadata_table()
-        m = m[[Var.params['sample_metadata'][0]]] # df with selected sample metadata
-
-        if not is_missingAdj_numeric(m):
-            msg = (
-                "Sorry, please choose sample metadata that is numeric. "
-                "(Integers, floats, and missing.)"
-            )
-            raise DataException(msg)
-
-        if m.values.size - num_nan_in_missingAdj_numeric(m) < MIN_NOT_MISSING:
-            msg = (
-                "Sorry, please choose sample metadata that has a minimum of %d, non-missing values"
-                % MIN_NOT_MISSING
-            )
-            raise DataException(msg)
 
 

@@ -1,5 +1,5 @@
 ---
-title: "Amplicon Matrix Filtering and Pooling, and Correlation with Continuous Sample Metadata"
+title: Amplicon Matrix Filtering or Pooling, then Correlation with Continuous Sample Metadata
 output:
   html_document:
     theme: cerulean
@@ -7,10 +7,8 @@ output:
     toc_depth: 1
     toc_float: true
     number_sections: true
-    code_folding: hide
-    code_download: true
 params:
-  amp_mat_name: NA
+  amp_mat_name: &AMPMATNAME NA
   val_cutoff: NA
   sd_cutoff: NA
   tax_rank: NA
@@ -26,9 +24,10 @@ params:
 #-----------------------------------
   scale: 'raw' # OTU table, one of {raw, ln, log1, log10} ... TODO this is probably not dependable
   mcol: NA # 1-based col index of metadata. col should be numeric
-  mname: NA # sample metadata field name:w
+  mname: NA # sample metadata field name
 #-----------------------------------
   funcs_flpth: '/kb/module/lib/R/workflow_funcs.R'
+  debug: true
 ---
 
 
@@ -36,23 +35,22 @@ params:
 
 ```{r init, include=FALSE}
 
-library(ggplot2)
-library(cowplot) # for ggplot2 grid plots
+library(plotly)
 library(phyloseq)
 library(knitr)
+library(stringr)
+
+knitr::opts_chunk$set(
+  echo=FALSE, 
+  warning=FALSE, # all warnings will be printed in the console instead of the output document
+  message=FALSE, 
+  results='asis'
+)
+options(max.print=60)
 
 ```
 
 ```{r}
-# TODO collapsible params kable and funcdefs
-
-keep=c('val_cutoff', 'sd_cutoff', 'tax_rank', 'cor_cutoff', 'cor_method', 'p_adj_method', 'p_adj_cutoff')
-
-
-paramsdf = stack(params[keep])
-paramsdf = data.frame(row.names=paramsdf$ind, arg=paramsdf$values)
-kable(paramsdf, caption='Input Parameters')
-
 
 ## Flatten Rmd params ##
 for(nm in names(params)) {
@@ -64,39 +62,32 @@ for(nm in names(params)) {
 ###### Hardcode ################################################################
 ################################################################################
     # amp_mat_name = '<INSERT AMPLICONMATRIX NAME HERE>'
-    # cor_cutoff = 0.9
-    # cor_method = 'pearson'
-    # p_adj_cutoff = 0.05
+    # cor_cutoff = 0.2
+    # cor_method = 'kendall'
+    # tax_rank = 'genus'
+    # p_adj_cutoff = 0.5
     # mcol = 62
     # funcs_flpth = '~/kbsdk-workspace/OTUSampleMetadataCorrelation/lib/R/workflow_funcs.R'
     # otu_table_flpth =  '~/otu_table.tsv'
-    # tax_table_flpth = NA#'~/tax_table.tsv'
+    # tax_table_flpth = '~/tax_table.tsv'
     # metadata_flpth = '~/sample_metadata.tsv'
     # out_dir = '~'
+    # debug = T
 ################################################################################
     
+    
+
+if(debug) {
+keep=c('val_cutoff', 'sd_cutoff', 'tax_rank', 'cor_cutoff', 'cor_method', 'p_adj_method', 'p_adj_cutoff')
+paramsdf = stack(params[keep])
+paramsdf = data.frame(row.names=paramsdf$ind, arg=paramsdf$values)
+kable(paramsdf, caption='Debugging Input Parameters')
+}    
+    
 source(funcs_flpth, local=knitr::knit_global())
-debug=FALSE
-
-knitr::opts_chunk$set(
-  echo=FALSE, 
-  warning=FALSE, # all warnings will be printed in the console instead of the output document
-  message=FALSE, 
-  results='asis'
-)
-options(max.print=60)
-
 
 ```
 
-
-
-
-
-
-
-
-# Explore Input Data from AmpliconMatrix `r amp_mat_name` {.tabset .tabset-fade}
 
 
 
@@ -118,13 +109,16 @@ m = phyloseq::sample_data(
   )[,mcol,drop=FALSE]
 )
 
-if(!is.na(tax_table_flpth)) {
+if(!is.na(tax_table_flpth) & !is.na(tax_rank)) { # checked in wrapper app, but this is better for running manually with hardcodes
   t = phyloseq::tax_table(as.matrix(read.table(tax_table_flpth, header=TRUE, sep='\t', row.names=1)))
-  if(is_empty(t)) stop('Empty taxonomy table')
+  if(is_empty(t)) stop('Empty taxonomy table') # checked in wrapper app
+  do_tax = TRUE
   has_tax = TRUE
 } else {
   t = NA
-  has_tax = FALSE
+  do_tax = FALSE # this means do pooling by taxonomy
+  has_tax = FALSE # this means taxonomy information is available 
+                                 # TODO differentiate these cases
 }
 
 
@@ -133,78 +127,29 @@ ps = phyloseq(o, t, m)
 message(sprintf('DEBUG: %s, %s',dim(o),dim(m)))
 
 
-
-summarize_ps(ps)
- 
-# WARNINGS:
-# Removed 14 rows containing non-finite values (stat_bin) <---  NAs?
-# Removed 6 rows containing missing values (geom_bar) <--- ?
-#
-# ^^^ due to ggplot2 data outside axis ranges of plot?
-
-
 ```
 
 
 
 ```{r clean}
-
-## Track dropped ##
-droptab = data.frame(row.names=c('rows', 'cols'))
-droptab$start = c(ntaxa(ps), nsamples(ps))
-
-
-# TODO since only doing missing sample metadata
-# move this to after pooling/filtering?
-
-
-
-
 ## Drop for missing sample metadata ##
 
 old_colnum = nsamples(ps)
 ps = prune_samples(!is.na(sample_data(ps))[,1], ps)
 
-droptab$'dropped because of<br>missing metadata' = c(0,old_colnum-nsamples(ps))
-
-```
-
-
-```{r knit_exit_unecessary} 
-
-# TODO function for premature exiting
-# TODO inputs: text, ps=NA, droptab=NA
-
-
-# These should not happen
-# Amplicons not cleaned currently
-# Sample metadata NAs handled in wrapper app
-# if(ntaxa(ps)==0 & nsamples(ps)==0) {
-#   kable_droptab(droptab)
-#   summarize_ps(ps)
-#   knit_exit(big_red('No amplicons or samples passed cleaning!'))
-# }
-# ```
-# ```{r}
-# if(ntaxa(ps) == 0) {
-#   kable_droptab(droptab)
-#   summarize_ps(ps)
-#   knit_exit(big_red('No amplicons passed cleaning!'))
-# }
-# ```
-# ```{r}
-# if(nsamples(ps) == 0) {
-#   kable_droptab(droptab)
-#   summarize_ps(ps)
-#   knit_exit(big_red('No samples passed cleaning!'))
-# }
-```
+n_dropped = old_colnum - nsamples(ps)
+if(n_dropped > 0) {
+  cat_text(sprintf(
+    'Note: %d samples dropped due to missing sample metadata', 
+    n_dropped
+  ))
+}
+```       
 
 
 
 
-
-# Explore Amplicon Filtering Statistics and Their Cutoffs {.tabset .tabset-fade}
+# Filter or Pool {.tabset .tabset-fade}
 
 ```{r}
 
@@ -218,322 +163,341 @@ max_vals = data.frame(max_vals=apply(o, MARGIN=1, function(row) max(row)), row.n
 stdv = data.frame(stdv=apply(o, MARGIN=1, function(row) sd(row)), row.names=row.names(o))
 
 ## Inspect Statistics ##
-
 filtervars = data.frame(max_vals=max_vals$max_vals, stdv=stdv$stdv)
 ```
 
-## Amplicon Filtering Statistics
-```{r}
-summarize_tab(filtervars, 'Amplicon Filtering Statistics', pool=FALSE, kblsmm=TRUE)
+
+
+## Histogram of Filtering Statistics {.unnumbered}
+
+
+```{r plotly_hist}
+yaxis = list(
+  title = "num amplicons"
+)
+if(dim(filtervars)[1] > 300) {
+  yaxis['type'] = 'log'
+}
+
+xaxis = list(
+  title="max val"
+)
+fig_max_val = plot_ly(x=filtervars$max_vals, type="histogram") %>% layout(xaxis=xaxis, yaxis=yaxis)
+
+xaxis = list(
+  title="stdv"
+)
+fig_stdv = plot_ly(x=filtervars$stdv, type="histogram") %>% layout(xaxis=xaxis, yaxis=yaxis)
+
+title = list(
+  text='Amplicon Filtering Statistics Histograms',
+  xref=0
+)
+margin = list(
+  t=70
+)
+plotly::subplot(fig_max_val, fig_stdv, nrows=2, titleX=T, titleY=T) %>% layout(showlegend=F, title=title, margin=margin)
 ```
 
-```{r}
-## Determine & Print Cutoffs ##
-q = 0.25 # testing  purposes
+
+```{r cutoffs}
+q = 0.25 # testing purposes
 if(is.na(val_cutoff)) val_cutoff = quantile(max_vals$max_vals, q)
 if(is.na(sd_cutoff)) sd_cutoff = quantile(stdv$stdv, q)
 
 
-dfcut = data.frame(cutoff=c(val_cutoff, sd_cutoff), row.names=c('max_val', 'stdv'))
+#dfcut = data.frame(cutoff=c(val_cutoff, sd_cutoff, tax_rank), row.names=c('max_val', 'stdv', 'tax_rank'))
+#kable(dfcut, caption='Amplicon filtering cutoffs and taxonomic pooling rank')
 ```
 
 
-## Cutoffs
-```{r}
-kable(dfcut, caption='Amplicon filtering cutoffs')
+## Table of Filtering or Pooling Results {.unnumbered .active}
+
+```{r init_droptab}
+droptab = data.frame(row.names=c('num amplicons'))
+droptab$start = c(ntaxa(ps))
 ```
 
 
-
-
-
-# Filter or Pool Amplicons {.tabset .tabset-fade}
-
-
-```{r}
+```{r filter}
 
 ## Try by max val ##
-b_maxVal = filter_taxa(ps, function(row) max(row) >= val_cutoff)
+b_keepByMaxVal = filter_taxa(ps, function(row) max(row) > val_cutoff)
 
 ## Try by standard deviation ##
-b_stdv = filter_taxa(ps, function(row) sd(row) >= sd_cutoff)
-
+b_keepByStdv = filter_taxa(ps, function(row) sd(row) > sd_cutoff)
 
 
 ## Tabulate ##
-droptab$'cut off by val' = c(sum(!b_maxVal), 0)
-droptab$'cut off by stdv' = c(sum(!b_stdv), 0)
+droptab$'cut off by max val' = c(sum(!b_keepByMaxVal))
+droptab$'cut off by stdv' = c(sum(!b_keepByStdv))
 
 
 ## (Prepare to) do actual filtering by all cutoffs ##
-b = b_maxVal & b_stdv
+b_keep = b_keepByMaxVal & b_keepByStdv
 
-droptab$'dropped by all cutoffs combined' = c(sum(!b), 0)
-droptab$'remaining' = c(ntaxa(ps)-sum(!b),nsamples(ps))
+droptab$'cut off by all' = sum(!b_keep)
 ```
 
 ```{r knit_exit_filterAmplicons}
-if(sum(!b) == ntaxa(ps)) {
+if(sum(!b_keep) == ntaxa(ps)) {
   kable_droptab(droptab)
   knit_exit(big_red('No amplicons passed filtering!'))
 }
 ```
 
-```{r}
-ps = prune_taxa(b, ps)
-
+```{r tax_glom}
+ps = prune_taxa(b_keep, ps)
 
 ps_ = ps
 
 ## Drop for taxonomy ##
 
-if(!is.na(tax_rank) && has_tax) {
+if(do_tax) {
   old_rownum = ntaxa(ps)
   ps = tax_glom(
     ps, 
     taxrank=tax_rank, 
-    NArm=FALSE, 
-    bad_empty=c()
+    NArm=FALSE, # don't remove amplicons with NA at taxrank
   )
   
-  droptab$'reduced by tax pooling' = c(old_rownum-ntaxa(ps),0)
+  droptab$'reduced by tax pooling' = c(old_rownum-ntaxa(ps))
 }
+
+
+droptab$'remaining' = droptab[1,'start'] - sum(droptab[1,'cut off by all'], droptab[1,'reduced by tax pooling'])
+kable(droptab)
 ```
 
-## Summary of Amplicon Actions
+
+
+
+
+
+
+# Correlate {.tabset .tabset-fade}
+
 ```{r}
-kable_droptab(droptab)
-```
+filterdf = data.frame(
+  start=ntaxa(ps),
+  check.names=F,
+  row.names=c('num amplicons')
+)
 
-```{r}
-summarize_ps(ps, summetdat=FALSE)
-```
-
-
-
-
-
-
-
-# Correlate Amplicon Matrix Values with Sample Metadata {.tabset .tabset-fade}
-
-```{r do_correlation_testing} 
-
-# We will call them OTUs in code for simplicity
 
 dmessage('ps before correlation testing')
 dmessage(ps)
+```
+
+## Table of Filtering Results {.unnumbered}
+
+```{r do_correlation_testing} 
+
+## No more changing ps from here on
 
 cordf = data.frame(row.names=taxa_names(ps))
 o = otu_table(ps)
 m = sample_data(ps)
 
-for(otu in taxa_names(ps)) {
-  res = cor.test(get_sample(ps,otu), m[[1]], method=cor_method)
-  cordf[otu, 'cor'] = res$estimate
-  cordf[otu, 'p'] = res$p.value
+if(has_tax) {
+  cordf$tax = cat_tax(tax_table(ps))
+}
+
+for(anm in taxa_names(ps)) {
+  res = cor.test(get_sample(ps,anm), m[[1]], method=cor_method)
+  cordf[anm, 'cor'] = res$estimate
+  cordf[anm, 'p'] = res$p.value
 }
 ```
 
 ```{r knit_exit_succeedCor}
-# handle NA results
+# handle all NA results
 keep = rownames(cordf)[complete.cases(cordf)]
 toss = rownames(cordf)[!complete.cases(cordf)]
 
-# all NAs
+filterdf$'dropped by NA cor' = length(toss)
+
 if(length(keep) == 0) {
+  kable(filterdf)
   knit_exit(big_red(
-    'Sorry, no amplicons that passed filtering by value and standard deviation succeeded in correlation testing. Not succeeding in correlation testing could be, for example, because of a standard deviation of 0. Please check the correlation formula and the data.'
+    'Sorry, no amplicons that passed filtering by statistics or pooling by taxonomy succeeded in correlation testing. Not succeeding in correlation testing could be, for example, because of a standard deviation of 0. Please check the correlation formula and the data.'
   ))
-# some NAs
-} else if(length(toss) > 0) {
-  cat_text(sprintf(
-    'Note: %d amplicons were dropped because they did not succeed in correlation testing. Not succeeding in correlation testing could be, for example, because of a standard deviation of 0. Please check the correlation formula and the data.', length(toss)
-  ))
-  cordf = cordf[keep,]
-  prune_taxa(keep, ps)
 }
 ```
+
 
 ```{r}
 dmessage('cordf right after correlation testing')
 dmessage(cordf)
-
-cat_header('Correlation Summary', lvl=2)
-summarize_tab(cordf, paste('Correlation Testing:', cor_method), pool=FALSE, kblsmm=TRUE)
 ```
 
-
-
-# Results by Top Amplicon Hits {.tabset .tabset-fade}
 
 ```{r}
-## Order/filter cordf by ps indices ##
-inds_top = order(abs(cordf$cor), decreasing=TRUE)
-inds_top = inds_top[sapply(inds_top, function(i) abs(cordf[i, 'cor']) >= cor_cutoff)]
-rwnms_top = taxa_names(ps)[inds_top]
+cordf = cordf[keep,]
 
-# dmessage(sprintf('INDS_TOP LENGTH: %d', length(inds_top)))
-```
+b_keepByCor = abs(cordf$cor) > cor_cutoff
+b_keepByCor[is.na(b_keepByCor)] = FALSE
 
-```{r knit_exit_corPAdjCutoffs}
-if(length(inds_top) == 0) {
-  knit_exit(big_red('Sorry, no amplicons passed correlation and p-value cutoffs.'))
+filterdf$'cut off by cor' = sum(!b_keepByCor)
+
+if(sum(b_keepByCor) == 0) {
+  kable(filterdf)
 }
+```
+```{r}
+if(sum(b_keepByCor) == 0) {
+  knit_exit(big_red('Sorry, no amplicons passed the correlation cutoff.'))
+}
+```
 
-# dprint('after knit_exit for 0 inds_top')
+
+```{r}
+cordf$p_adj = NA
+cordf[b_keepByCor,'p_adj'] = p.adjust(cordf[b_keepByCor,'p'], method=p_adj_method)
+
+b_keepByPAdj = cordf$p_adj <= p_adj_cutoff
+b_keepByPAdj[is.na(b_keepByPAdj)] = FALSE
+
+# !b_keepByCor is subset of !b_keepByPAdj
+filterdf$'cut off by adj p' = sum(!b_keepByPAdj) - sum(!b_keepByCor)
+
+if(sum(b_keepByPAdj) == 0) {
+  kable(filterdf)
+}
+```
+```{r}
+if(sum(b_keepByPAdj) == 0) {
+  knit_exit(big_red('Sorry, no amplicons passed correlation and adjusted p-value cutoffs.'))
+}
+```
+
+
+```{r}
+cordf = cordf[b_keepByPAdj,] # filter
+
+inds_ordered = order(abs(cordf$cor), decreasing=TRUE)
+cordf = cordf[inds_ordered,]
+
 # dmessage(sprintf('INDS_TOP LENGTH: %d', length(inds_top)))
 ```
 
+
+```{r filter_table}
+filterdf$end = dim(cordf)[1]
+kable(filterdf)
+```
+
+## Table of Top Amplicons {.unnumbered}
+
+
+
 ```{r}
-dmessage(ps)
-dmessage('cordf:')
-dmessage(cordf)
-
-dmessage('pruning')
-cordf_top = cordf[inds_top,]
-ps_top = prune_taxa(rwnms_top, ps)
-
-dmessage('done pruning')
-## adjust ##
-cordf_top$p_adj = p.adjust(cordf_top$p)
-
-
-## TODO header goes with `summarize_tab`
-cat_header('Correlation Summary', lvl=2)
-summarize_tab(cordf_top, 'Top Correlation Hits', pool=FALSE, kblsmm=TRUE)
-
-dmessage('summarizing ps')
-summarize_ps(ps_top, title='Final Amplicon Matrix', summetdat=FALSE) # TODO include min/max vline
-
+kable(cordf, caption='Note: multiple amplicon ids can be collapsed into one when pooling by taxonomy.')
 ```
 
 
+
+## Plot of Top Amplicons {.unnumbered .active}
+
+
 ```{r}
-### Determine size of upcoming Rmd figure
+## Determine size of upcoming Rmd figure ##
 
-max_subplots = 15
-num_subplots = min(length(inds_top), max_subplots)
+max_subplots = 20
+num_subplots = min(dim(cordf)[1], max_subplots)
 
-c = 3
-r = ceiling(num_subplots/c)
+c = 2 # num columns
+r = ceiling(num_subplots/c) # num rows
 
-w_perPlot = 3
-h_perPlot = 4
+w_perPlot = 4.25 # inches
+h_perPlot = 3.5 # inches
 
 w_rmd = w_perPlot * c
 h_rmd = h_perPlot * r
 
-dprint(w_rmd)
-dprint(h_rmd)
+if(dim(cordf)[1] > max_subplots) {
+  cat_text(sprintf('Note: Limiting to top %d plots', max_subplots))
+}
 
 
+dmessage(sprintf('w_rmd: %g', w_rmd))
+dmessage(sprintf('h_rmd: %g', h_rmd))
 ```
 
 
+```{r plotly, fig.height=h_rmd, fig.width=w_rmd}
 
-
-
-# Plot Top Amplicon Hits {.tabset .tabset-fade}
-
-```{r, fig.height=h_rmd, fig.width=w_rmd}
-
-## Get vectors for top hits ##
-
-o = otu_table(ps_top)
-m = sample_data(ps_top)
-otus = taxa_names(ps_top)
-if(has_tax) taxs = cat_tax(tax_table(ps_top)) # TODO newlines for long tax, by num char
-cors = cordf_top$cor
-p_adjs = cordf_top$p_adj
-
-## Labels ##
-
-xlab = sprintf('sample_data$"%s"', colnames(m)[1])
-ylab = 'amplicon val' #if(scale=='raw') 'rel abund (%)' else 'amplicon val' # TODO safe assumption?
-cex = 0.8
-
-title = function(ind) {
-  # get subplot title
-  # with or without tax
-  if(has_tax)
-    sprintf('id=%s\ntax=%s\ncor=%.3g\np_adj=%.3g', otus[i], taxs[i], cors[i], p_adjs[i])
-  else
-    sprintf('id=%s\ncor=%.3g\np_adj=%.3g', otus[i], cors[i], p_adjs[i])
-}
-
-## Plot ##
-
-top = if(has_tax) 2 else 1
-par(mfrow=c(r, c), mar=par()$mar+c(-1,0,top,0))
-
-for(i in 1:num_subplots) {
-  plot(
-    m[[1]], 
-    o[i,] * 100,
-    xlab=xlab, 
-    ylab=ylab, 
-    main=title(i),
-    cex.main=cex,
-    cex.lab=cex
+figs = list()
+for(id in row.names(cordf)[1:num_subplots]) {
+  anno = if(do_tax) {
+    paste(
+      wrap_taxstr(cordf[id,'tax'], len=70), 
+      sprintf('cor=%.3g', cordf[id,'cor']), 
+      sep='\n'
+    ) 
+  } else id
+  # margin = list(
+  #   t=200 # individual margin doesn't work?
+  # )
+  yaxis = list(
+    title=list(
+      text='amplicon value',
+      standoff=5
+    )
   )
-}
-
-```
-
-
-
-[comment]: # -------------------------------------------------------------------
-[comment]: # Write out
-[comment]: # -------------------------------------------------------------------
-
-
-```{r, include=FALSE}
-### Output results to file
-
-## Correlation table ##
-write.table(cordf_top, file=file.path(out_dir, 'cor.tsv'), sep='\t', quote=FALSE)
-
-
-
-## Determine PNG size ##
-
-max_subplots = 44
-num_subplots = min(length(inds_top), max_subplots)
-
-c = 3
-r = ceiling(num_subplots/c)
-
-w_perPlot = 400
-h_perPlot = 400
+  xaxis = list(
+    title=list(
+      text=colnames(m)[1],
+      standoff=5
+    )
+  )
+  fig = plot_ly(
+    x=m[[1]],
+    y=c(o[id]),
+    type='scatter',
+    mode='markers',
+    size=8, # marker size
+    alpha=0.5
+  ) %>% 
+  layout(yaxis=yaxis, xaxis=xaxis) %>% 
+  add_annotations(
+    text=anno, 
+    x=0.5, 
+    y=0.95, 
+    xref='paper', 
+    yref='paper', 
+    xanchor='center', 
+    yanchor='top', # top limit of anno
+    showarrow=FALSE
+  )
   
-w_png = w_perPlot * c
-h_png = h_perPlot * r
-
-print(w_png)
-print(h_png)
-
-
-## PNG ##
-
-png(file.path(out_dir, 'cor.png'), height=h_png, width=w_png)
-
-par(mfrow=c(r,c))
-
-for(i in 1:num_subplots) {
-  plot(
-    m[[1]], 
-    o[i,] * 100,
-    xlab=xlab, 
-    ylab=ylab, 
-    main=title(i),
-    cex.main=cex,
-    cex.lab=cex
-  )
+  figs[[id]] = fig
 }
 
-dev.off()
+title = list(
+  # yref='paper',
+  # y=1.01,
+  text='Amplicons vs. Sample Metadata'
+)
+margin = list(
+  t=90
+)
+plotly::subplot(
+  figs, 
+  nrows=r,
+  shareX=FALSE,
+  shareY=FALSE, # TRUE -> axis will retain scale but points will go off graph
+  titleX=TRUE,
+  titleY=TRUE
+) %>% layout(title=title, margin=margin, showlegend=FALSE)
 
+```
+
+
+
+```{r write, include=FALSE}
+### Output results to file
+write.table(cordf, file=file.path(out_dir, 'cor.tsv'), sep='\t', quote=FALSE)
 ```
 
 
