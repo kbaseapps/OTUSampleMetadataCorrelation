@@ -115,7 +115,7 @@ class OTUSampleMetadataCorrelationTest(unittest.TestCase):
                     "val_cutoff": None,
                     "sd_cutoff": None,
                     "tax_rank": tax_rank,
-                    "tax_field": tax_field,
+                    "tax_field": tax_field, # can be listed or not
                 },
                 "cor_params": {
                     "cor_cutoff": 0.1,
@@ -145,7 +145,7 @@ class OTUSampleMetadataCorrelationTest(unittest.TestCase):
                     amp_mat_upa=enigma17770by511,
                     sample_metadata=self.sample_metadata_17770by511,
                     tax_rank=tax_rank,
-                    tax_field='taxonomy'
+                    tax_field=['taxonomy']
                 )
 
 
@@ -164,7 +164,7 @@ class OTUSampleMetadataCorrelationTest(unittest.TestCase):
                     amp_mat_upa=enigma50by30,
                     sample_metadata=self.sample_metadata_50by30,
                     tax_rank=tax_rank,
-                    tax_field='taxonomy'
+                    tax_field=['taxonomy']
                 )
 
     ##########
@@ -183,7 +183,7 @@ class OTUSampleMetadataCorrelationTest(unittest.TestCase):
                     amp_mat_upa=enigma17770by511_RDPClsf,
                     sample_metadata=self.sample_metadata_17770by511,
                     tax_rank=tax_rank,
-                    tax_field=self.RDPClsf_taxonomy
+                    tax_field=[self.RDPClsf_taxonomy]
                 )
 
     ##########
@@ -201,7 +201,7 @@ class OTUSampleMetadataCorrelationTest(unittest.TestCase):
                     amp_mat_upa=enigma50by30_RDPClsf,
                     sample_metadata=self.sample_metadata_50by30,
                     tax_rank=tax_rank,
-                    tax_field=self.RDPClsf_taxonomy
+                    tax_field=[self.RDPClsf_taxonomy]
                 )
 
 
@@ -283,7 +283,7 @@ class OTUSampleMetadataCorrelationTest(unittest.TestCase):
                         "val_cutoff": 1,
                         "sd_cutoff": 1,
                         "tax_rank": 'genus',
-                        "tax_field": 'taxonomy',
+                        "tax_field": ['taxonomy'],
                     },
                     "cor_params": {
                         "cor_cutoff": 0.001,
@@ -406,5 +406,5 @@ run_tests = ['test_small_wTax']
 
 for test in all_tests:
         if test not in run_tests:
-            #delattr(OTUSampleMetadataCorrelationTest, test)
+            delattr(OTUSampleMetadataCorrelationTest, test)
             pass

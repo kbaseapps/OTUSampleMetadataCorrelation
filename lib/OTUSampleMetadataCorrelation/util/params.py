@@ -59,16 +59,15 @@ class Params:
         params = flatten(params)
         
 
-        ##
-        ## Custom transformations to internal representation ##
-
+        ###
+        ### Custom transformations to internal representation
 
         # rep this as list for now
         # thought we'd do multiple sample metadata fields one day
         if not isinstance(params['sample_metadata'], list):
             params['sample_metadata'] = [params['sample_metadata']]
 
-        if params.get("tax_rank") in NULL_VALS:
+        if params.get('tax_rank') in NULL_VALS:
             params['tax_rank'] = None
         if params['tax_field'] in NULL_VALS:
             params['tax_field'] = None
@@ -79,6 +78,12 @@ class Params:
             params['tax_field'] = None
         if params.get('tax_field') is None:
             params['tax_rank'] = None
+
+        # required single fields are passed as string,
+        # but optional single fields are passed as list of string
+        if type(params.get('tax_field')) is list:
+            params['tax_field'] = params.get('tax_field')[0]
+
 
         self._validate(params)
 

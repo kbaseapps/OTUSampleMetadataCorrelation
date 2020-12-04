@@ -207,7 +207,7 @@ class AttributeMapping:
         self.check(1)
 
         # find ind
-        ind = -1 # empty attributes case
+        ind = -1 # no attribute case
         for i, attribute in enumerate(self.obj['attributes']):
             if attribute['attribute'] == Var.params.getd('tax_field'):
                 ind = i
