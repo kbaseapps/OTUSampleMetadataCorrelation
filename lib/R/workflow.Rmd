@@ -222,10 +222,10 @@ droptab$start = c(ntaxa(ps))
 ```{r filter}
 
 ## Try by max val ##
-b_keepByMaxVal = filter_taxa(ps, function(row) max(row) > val_cutoff)
+b_keepByMaxVal = filter_taxa(ps, function(row) max(row) >= val_cutoff)
 
 ## Try by standard deviation ##
-b_keepByStdv = filter_taxa(ps, function(row) sd(row) > sd_cutoff)
+b_keepByStdv = filter_taxa(ps, function(row) sd(row) >= sd_cutoff)
 
 
 ## Tabulate ##

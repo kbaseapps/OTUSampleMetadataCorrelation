@@ -44,36 +44,36 @@ parameters :
             Taxonomy field
         short-hint: |
             Row <code>AttributeMapping</code>'s attribute containing amplicons' taxonomy assignments. This is required in order to use preceding taxonomic rank parameter 
-    abund_cutoff:
+    val_cutoff:
         ui-name : |
             [Transformed] abundance cutoff
         short-hint : | 
-            Filter out OTUs that do not meet this threshold in at least one sample. Default is 1st quartile
+            Filter out amplicons whose max values across samples are not at least this threshold. Default is 1st quartile
     sd_cutoff:
         ui-name : |
             Standard deviation cutoff
         short-hint : | 
-            Filter out OTUs that do not meet this abundance standard deviation threshold. Default is 1st quartile
-    cor_cutoff:
-        ui-name : |
-            Correlation cutoff
-        short-hint : | 
-            Filter out OTU's that do not correlate with sample metadata with an absolute value of at least this amount. Default is <code>0.5</code>
+            Filter out amplicons whose standard deviations across samples are not at least this threshold. Default is 1st quartile
     cor_method:
         ui-name : |
             Correlation method
         short-hint : | 
             Correlation method
+    cor_cutoff:
+        ui-name : |
+            Correlation cutoff
+        short-hint : | 
+            Filter out amplicons that correlate with the sample metadata with an absolute value less than this cutoff. Default is <code>0.5</code>
     p_adj_method:
         ui-name : |
-            Multiple testing<br>adjustment method
+            Multiple testing adjustment method
         short-hint : | 
             Multiple hypothesis testing p-value adjustment method
     p_adj_cutoff:
         ui-name : |
-            Adjusted<br>p-value cutoff
-        short-hint : | 
             Adjusted p-value cutoff
+        short-hint : | 
+            Filter out amplicons whose adjusted p-values are greater than this cutoff
 
 parameter-groups:
     amp_reduce_params:
@@ -104,20 +104,20 @@ description : |
     This app requires an input <code>AmpliconMatrix</code> with a column <code>AttributeMapping</code>
     containing the sample metadata to correlate amplicons' values against.
     If that <code>AmpliconMatrix</code> also has a row <code>AttributeMapping</code> containing taxonomy assignments,
-    then pooling amplicons by taxonomy can be done.
+    then pooling the amplicon matrix by a taxonomic rank can be done.
     </p>
 
     <p>
-    This app requires a sample metadata field with values with a minimum of 5, non-missing values.
-    'Missing' values are represented by null, 'None', '', etc. (?), where a number usually is.
+    This app requires a sample metadata field with values with a minimum of 5 numeric, non-missing values.
+    'Missing' values are represented by <code>null</code> or <code>''</code> where a number usually is.
     </p>
 
     <p>
-    This app expects "canonical" or near "canonical" taxonomy strings in order to pool amplicons by taxonomy well.
-    In this case, that means taxonomies with assignments in the domain, phylum, class, order, family, genus, and species ranks.
-    The ranks in the row AttributeMapping's taxonomy strings should be semicolon delimited.
-    Incomplete ranks is accepted.
-    In the case of collapsing amplicons by taxonomy where a rank is missing, missing ranks will be considered the same taxon.
+    This app expects canonical-like taxonomy strings in the row <code>AttributeMapping</code> in order to pool amplicons by taxonomy well.
+    In this case, that means semicolon-delimited taxa with assignments 
+    in the domain, phylum, class, order, family, genus, and species ranks, 
+    with missing ranks (e.g., <code>''</code>, <code>'unclassified'</code>, or truncated) allowed.
+    In the case of pooling/collapsing/aglommerating amplicons by taxonomy where a rank is missing, missing ranks will be considered their own distinct taxon.
     To obtain suitable taxonomic assignments, the RDP Classifier app can be run. 
     </p>
 

@@ -13,7 +13,7 @@
         {
             "id": "amp_reduce_params",
             "parameters": [
-                "abund_cutoff",
+                "val_cutoff",
                 "sd_cutoff",
                 "tax_rank",
                 "tax_field"
@@ -80,7 +80,7 @@
                 }
             }
         },{
-            "id": "abund_cutoff",
+            "id": "val_cutoff",
             "optional": true,
             "advanced": true,
             "allow_multiple": false,
@@ -253,8 +253,8 @@
                     "input_parameter": "sample_metadata",
                     "target_property": "sample_metadata"
                 },{
-                    "input_parameter": "abund_cutoff",
-                    "target_property": "abund_cutoff"
+                    "input_parameter": "val_cutoff",
+                    "target_property": "val_cutoff"
                 },{
                     "input_parameter": "sd_cutoff",
                     "target_property": "sd_cutoff"
