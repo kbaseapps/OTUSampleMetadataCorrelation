@@ -1,10 +1,10 @@
 #
 # define display information
 #
-name: Correlate [Transformed] Amplicon Abundances with Continous Sample Metadata
+name: Correlate Amplicon Abundances with Continous Sample Metadata
 
 tooltip: |
-    Filter amplicons or pool by taxonomy, correlate values with continuous sample metadata, then table and plot
+    Filter or pool amplicons, then correlate with continuous sample metadata
 
 screenshots: []
 
