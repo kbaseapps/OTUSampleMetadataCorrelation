@@ -4,6 +4,26 @@ from .config import Var
 from .dprint import dprint
 
 
+VALID_PARAMS = [
+#-------------------------------- required
+    'amp_mat_upa',
+    'sample_metadata',
+    'workspace_id',
+    'workspace_name',
+#-------------------------------- param groups
+    'amp_params',
+    'cor_params',
+#-------------------------------- default-backed
+    'val_cutoff',
+    'sd_cutoff',
+    'tax_rank',
+    'tax_field',
+    'cor_cutoff',
+    'cor_method',
+    'p_adj_method',
+    'p_adj_cutoff',
+]
+
 DEFAULTS = dict(
     val_cutoff=None,
     sd_cutoff=None,
@@ -24,7 +44,7 @@ NON_DEFAULTS = [
     'workspace_name'
 ]
 
-DEFAULTS_TO_NOT_PASS = [ # default-packed params, but not passing to Rmd as arg
+DEFAULTS_TO_NOT_PASS = [ # default-backed params, but not passing to Rmd as arg
    'tax_field',
 ]
 
@@ -55,8 +75,10 @@ class Params:
 
     def __init__(self, params):
 
+        self._validate(params)
+
         # ungroup 
-        params = flatten(params)
+        params = self.flatten(params)
         
 
         ###
@@ -93,8 +115,10 @@ class Params:
     def _validate(self, params):
         # make sure nothing misspelled passed in
         for p in params:
-            if p not in DEFAULTS and p not in NON_DEFAULTS:
+            if p not in VALID_PARAMS:
                 raise Exception(p)
+
+        
 
 
     def cmd_params_l(self) -> list:
@@ -113,20 +137,15 @@ class Params:
 
         return l
 
-
-
-    # TODO don't use this
-    def get(self, key):
-        return self.params.get(key)
-    
         
     def __contains__(self, key):
         return key in self.params
 
 
-
     def getd(self, key):
-        # TODO switch to this
+        '''
+        Use this for default-backed params
+        '''
         if key not in DEFAULTS:
             raise Exception("Key `%s` not default-backed, so can't use params.getd()" % key)
         return self.params.get(key, DEFAULTS[key])
@@ -134,6 +153,9 @@ class Params:
 
 
     def __getitem__(self, key):
+        '''
+        Use this for required params
+        '''
         if key in DEFAULTS:
             raise Exception("Key `%s` is default-backed, thus optional, so you should use params.getd()" % key)
         return self.params[key]
@@ -143,15 +165,16 @@ class Params:
         return 'Wrapper for params\n%s' % (json.dumps(self.params, indent=4))
 
 
-def flatten(d):
-    '''
-    Handles at most 1 level nesting
-    '''
-    d1 = d.copy()
-    for k, v in d.items():
-        if isinstance(v, dict):
-            for k1, v1 in d1.pop(k).items():
-                d1[k1] = v1
-    return d1
+    @staticmethod
+    def flatten(d):
+        '''
+        Handles at most 1 level nesting
+        '''
+        d1 = d.copy()
+        for k, v in d.items():
+            if isinstance(v, dict):
+                for k1, v1 in d1.pop(k).items():
+                    d1[k1] = v1
+        return d1
 
 

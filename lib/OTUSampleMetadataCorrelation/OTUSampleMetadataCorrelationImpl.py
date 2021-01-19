@@ -196,7 +196,10 @@ class OTUSampleMetadataCorrelation:
         col_attrmap.to_metadata_table(sample_metadata_flpth)
         if do_tax_table: row_attrmap.to_tax_table(tax_table_flpth)
 
-
+        ## Rmd ##
+        rmd_flpth = os.path.join(Var.return_dir, os.path.basename(Var.rmd_flpth))
+        shutil.copyfile(Var.rmd_flpth, rmd_flpth)
+        
 
 
         #
@@ -221,19 +224,9 @@ class OTUSampleMetadataCorrelation:
         ])
 
         cmd = '''\
-R -e "rmarkdown::render('%s', output_format='html_document', output_file='%s', params=list(amp_mat_name='%s', %s))"''' \
-% (Var.rmd_flpth, out_html_flpth, amp_mat.name, ', '.join(pl))
+R -e "rmarkdown::render('%s', output_format='html_document', clean=FALSE, output_file='%s', params=list(amp_mat_name='%s', %s))"''' \
+% (rmd_flpth, out_html_flpth, amp_mat.name, ', '.join(pl))
 
-
-        #
-        ##
-        ### include extra files
-        ####
-
-        shutil.copyfile(Var.rmd_flpth, os.path.join(Var.return_dir, os.path.basename(Var.rmd_flpth)))
-        
-        with open(os.path.join(Var.return_dir, 'cmd.txt'), 'w') as fh:
-            fh.write(cmd)
 
 
 
@@ -273,6 +266,7 @@ R -e "rmarkdown::render('%s', output_format='html_document', output_file='%s', p
             'direct_html_link_index': 0,
             'file_links': file_links,
             'workspace_name': params['workspace_name'],
+            'html_window_height': 600,
         }
 
         report = Var.kbr.create_extended_report(params_report)

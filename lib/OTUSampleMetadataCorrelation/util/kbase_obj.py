@@ -247,17 +247,17 @@ class AttributeMapping:
         attributes = self.obj['attributes']
         instances = self.obj['instances']
 
-        df = pd.DataFrame.from_dict(instances, orient='index')#; dprint('df', run=locals())
+        df = pd.DataFrame.from_dict(instances, orient='index')
         df = pd.DataFrame(
             data=vd.replace_missing(df.values, ''), 
             index=df.index, 
             columns=[attribute['attribute'] for attribute in attributes]
-        )#; dprint('df', run=locals())
+        )
         
         if flpth is not None:
             df.to_csv(flpth, sep='\t')
 
-        return df # for testing
+        return df # for validation, testing
 
 
     #####

@@ -34,6 +34,7 @@ RUN pip install dotmap numpy==1.15.4 pandas
 
 RUN apt-get install -y libcurl4-openssl-dev libssl-dev
 RUN R -e "install.packages(c('curl','openssl','httr','plotly'))"
+RUN R -e "install.packages(c('kableExtra'))"
 
 ENV PYTHONUNBUFFERED=1
 

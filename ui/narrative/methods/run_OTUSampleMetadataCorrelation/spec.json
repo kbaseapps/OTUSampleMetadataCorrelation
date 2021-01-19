@@ -11,7 +11,7 @@
     },
     "parameter-groups": [
         {
-            "id": "amp_reduce_params",
+            "id": "amp_params",
             "parameters": [
                 "val_cutoff",
                 "sd_cutoff",
@@ -277,8 +277,8 @@
                     "input_parameter": "p_adj_cutoff",
                     "target_property": "p_adj_cutoff"
                 },{
-                    "input_parameter": "amp_reduce_params",
-                    "target_property": "amp_reduce_params"
+                    "input_parameter": "amp_params",
+                    "target_property": "amp_params"
                 },{
                     "input_parameter": "cor_params",
                     "target_property": "cor_params"

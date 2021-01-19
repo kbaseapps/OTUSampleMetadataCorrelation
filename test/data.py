@@ -13,11 +13,16 @@ from OTUSampleMetadataCorrelation.util.dprint import dprint
 from OTUSampleMetadataCorrelation.util.config import Var
 
 
-##################################
-##################################
-testData_dir = '/kb/module/test/data'
-##################################
-##################################
+
+
+####################################################################################################
+############################## attributes ##########################################################
+####################################################################################################
+# the 50by30 has original sample metadata names
+# the 17770by511 has normalized ones
+sample_metadata_50by30 ="Packing Depth Start (ft BGS)" #'packing_depth_start_ft_bgs' # 61
+sample_metadata_17770by511 = 'top_of_casing_stickup_ft' #"Top of Casing Stickup (ft)" # 68
+RDPClsf_taxonomy = "RDP Classifier taxonomy, conf=0.777, gene=silva_138_ssu, minWords=default"
 
 
 
@@ -51,15 +56,16 @@ dummy10by8 = 'dummy/10by8/AmpMat'
 dummy10by8_rowAttrMap = 'dummy/10by8/rowAttrMap'
 
 
+
 ####################################################################################################
 ####################################################################################################
 ####################################################################################################
 
 
+testData_dir = '/kb/module/test/data'
 
 
-
-def get_mock_dfu(dataset):
+def get_mock_dfu(dataset, replace_obj=None):
     '''
     Avoid lengthy `get_objects` and `save_objects`
     '''
@@ -103,6 +109,12 @@ def get_mock_dfu(dataset):
 
         with open(flpth) as f:
             obj = json.load(f)
+
+        # swap in arg obj
+        if replace_obj is not None:
+            upa = params['object_refs'][0] # this only works for 1 input UPA
+            if upa in replace_obj:
+                obj['data'][0]['data'] = replace_obj[upa]
 
         return obj
 

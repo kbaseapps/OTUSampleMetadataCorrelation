@@ -3,7 +3,7 @@ title:
 output:
   html_document:
     theme: cerulean
-    number_sections: true
+    number_sections: false
 params:
   amp_mat_name: &AMPMATNAME NA
   val_cutoff: NA
@@ -80,7 +80,6 @@ if(debug) {
 keep=c('val_cutoff', 'sd_cutoff', 'tax_rank', 'cor_cutoff', 'cor_method', 'p_adj_method', 'p_adj_cutoff')
 paramsdf = stack(params[keep])
 paramsdf = data.frame(row.names=paramsdf$ind, arg=paramsdf$values)
-kable(paramsdf, caption='Debugging Input Parameters')
 }    
     
 source(funcs_flpth, local=knitr::knit_global())
@@ -148,7 +147,7 @@ if(n_dropped > 0) {
 
 
 
-# Filter or Pool {.tabset .tabset-fade}
+# {- .tabset .tabset-pills .tabset-fade}
 
 ```{r}
 
@@ -167,47 +166,12 @@ filtervars = data.frame(max_vals=max_vals$max_vals, stdv=stdv$stdv)
 
 
 
-## Histogram of Amplicon Filtering Statistics {.unnumbered}
+## Amplicon Filtering Statistics
 
 
 ```{r plotly_hist}
 
-yaxis = list(
-  title = "Number amplicons"
-)
-if(dim(filtervars)[1] > 300) {
-  yaxis['type'] = 'log'
-}
 
-xaxis = list(
-  title="Max value"
-)
-fig_max_val = plot_ly(x=filtervars$max_vals, type="histogram") %>% layout(xaxis=xaxis, yaxis=yaxis)
-
-xaxis = list(
-  title="Stdv"
-)
-fig_stdv = plot_ly(x=filtervars$stdv, type="histogram") %>% layout(xaxis=xaxis, yaxis=yaxis)
-
-#title = list(
-#  text='Amplicon Filtering Statistics Histograms',
-#  xref=0
-#)
-#margin = list(
-#  t=70
-#)
-plotly::subplot(
-  fig_max_val, 
-  fig_stdv, 
-  nrows=2, 
-  titleX=T, 
-  titleY=T
-) %>% 
-layout(
-  showlegend=F
-#  title=title, 
-#  margin=margin
-)
 ```
 
 
@@ -222,7 +186,6 @@ if(is.na(sd_cutoff)) sd_cutoff = quantile(stdv$stdv, q)
 ```
 
 
-## Table of Filtering or Pooling Results {.unnumbered .active}
 
 ```{r init_droptab}
 droptab = data.frame(row.names=c('Number amplicons'))
@@ -247,7 +210,7 @@ droptab$'Cut off by standard deviation' = c(sum(!b_keepByStdv))
 ## (Prepare to) do actual filtering by all cutoffs ##
 b_keep = b_keepByMaxVal & b_keepByStdv
 
-droptab$'Cut off by all filtering statistics' = sum(!b_keep)
+droptab$'Cut off by all preliminary filtering statistics' = sum(!b_keep)
 ```
 
 ```{r knit_exit_filterAmplicons}
@@ -276,31 +239,25 @@ if(do_tax) {
 }
 
 
-droptab$'Remaining' = droptab[1,'Start'] - sum(droptab[1,'Cut off by all'], droptab[1,'Reduced by tax pooling'])
-kable(droptab)
+#droptab$'Remaining' = droptab[1,'Start'] - sum(droptab[1,'Cut off by all'], droptab[1,'Reduced by tax pooling'])
+#kable(droptab)
 ```
 
 
-
-
-
-
-
-# Correlate {.tabset .tabset-fade}
 
 ```{r}
-filterdf = data.frame(
-  Start=ntaxa(ps),
-  check.names=F,
-  row.names=c('Number amplicons')
-)
+#droptab = data.frame(
+#  Start=ntaxa(ps),
+#  check.names=F,
+#  row.names=c('Number amplicons')
+#)
 
 
-dmessage('ps before correlation testing')
-dmessage(ps)
+#dmessage('ps before correlation testing')
+#dmessage(ps)
 ```
 
-## Table of Filtering Results {.unnumbered}
+
 
 ```{r do_correlation_testing} 
 
@@ -326,10 +283,10 @@ for(anm in taxa_names(ps)) {
 keep = rownames(cordf)[complete.cases(cordf)]
 toss = rownames(cordf)[!complete.cases(cordf)]
 
-filterdf$'Dropped by NA correlation' = length(toss)
+droptab$'Dropped by NA correlation' = length(toss)
 
 if(length(keep) == 0) {
-  kable(filterdf)
+  kable(droptab)
   knit_exit(big_red(
     'Sorry, no amplicons that passed filtering by statistics or pooling by taxonomy succeeded in correlation testing. Not succeeding in correlation testing could be, for example, because of a standard deviation of 0. Please check the correlation formula and the data.'
   ))
@@ -349,10 +306,10 @@ cordf = cordf[keep,]
 b_keepByCor = abs(cordf$cor) > cor_cutoff
 b_keepByCor[is.na(b_keepByCor)] = FALSE
 
-filterdf$'Cut off by correlation' = sum(!b_keepByCor)
+droptab$'Cut off by correlation' = sum(!b_keepByCor)
 
 if(sum(b_keepByCor) == 0) {
-  kable(filterdf)
+  kable(droptab)
 }
 ```
 ```{r}
@@ -370,10 +327,10 @@ b_keepByPAdj = cordf$p_adj <= p_adj_cutoff
 b_keepByPAdj[is.na(b_keepByPAdj)] = FALSE
 
 # !b_keepByCor is subset of !b_keepByPAdj
-filterdf$'Cut off by adjusted p-value' = sum(!b_keepByPAdj) - sum(!b_keepByCor)
+droptab$'Cut off by adjusted p-value' = sum(!b_keepByPAdj) - sum(!b_keepByCor)
 
 if(sum(b_keepByPAdj) == 0) {
-  kable(filterdf)
+  kable(droptab)
 }
 ```
 ```{r}
@@ -393,12 +350,111 @@ cordf = cordf[inds_ordered,]
 ```
 
 
-```{r filter_table}
-filterdf$End = dim(cordf)[1]
-kable(filterdf)
+```{r}
+standoff = 5
+font_size = 10
+
+
+  yaxis = list(
+    title=list(
+      text='amplicon value',
+      font=list(
+        size=font_size
+      ),
+      standoff=5
+    )
+  )
+
+
+
+yaxis = list(
+  title=list(
+    text='Number amplicons',
+    font=list(
+      size=font_size
+    ),
+    standoff=standoff
+  )
+)
+if(dim(filtervars)[1] > 300) {
+  yaxis['type'] = 'log'
+}
+
+xaxis = list(
+  title=list(
+    text='Max value',
+    font=list(
+      size=font_size
+    ),
+    standoff=standoff
+  )
+)
+fig_max_val = plot_ly(x=filtervars$max_vals, type="histogram") %>% layout(xaxis=xaxis, yaxis=yaxis)
+
+xaxis = list(
+  title=list(
+    text='Standard deviation',
+    font=list(
+      size=font_size
+    ),
+    standoff=standoff
+  )
+)
+fig_stdv = plot_ly(x=filtervars$stdv, type="histogram") %>% layout(xaxis=xaxis, yaxis=yaxis)
+
+xaxis=list(
+  title=list(
+    text='Correlation',
+    font=list(
+      size=font_size
+    ),
+    standoff=standoff
+  )
+)
+fig_cor = plot_ly(x=cordf$cor, type="histogram") %>% layout(xaxis=xaxis, yaxis=yaxis)
+
+# For making spaces between subplots
+fig_empty = plotly_empty()
+h_empty = 0.08
+h_fig = (1-2*h_empty)/3
+
+#title = list(
+#  text='Amplicon Filtering Statistics Histograms',
+#  xref=0
+#)
+#margin = list(
+#  t=70
+#)
+plotly::subplot(
+  fig_max_val, 
+  fig_empty,
+  fig_stdv, 
+  fig_empty,
+  fig_cor,
+  nrows=5, 
+  heights=c(h_fig,h_empty,h_fig,h_empty,h_fig),
+  titleX=T, 
+  titleY=T
+) %>% 
+layout(
+  showlegend=F
+#  title=title, 
+#  margin=margin
+)
 ```
 
-## Table of Top Amplicons {.unnumbered}
+## Filtering or Pooling Results
+
+```{r filter_table}
+droptab$End = dim(cordf)[1]
+kable(droptab)
+```
+
+
+
+
+
+## Correlation Results
 
 
 
@@ -420,7 +476,7 @@ kable(
 
 
 
-## Plot of Top 10 Amplicons {.unnumbered .active}
+## Top 10 Amplicons {.active}
 
 
 ```{r}
@@ -553,7 +609,9 @@ write.table(o, file=file.path(out_dir, 'reduced_amplicon_matrix.tsv'), sep='\t',
 ```
 
 
-
+```{r}
+if (debug) kable(paramsdf, caption='Debugging Input Parameters')
+```
 
 
 

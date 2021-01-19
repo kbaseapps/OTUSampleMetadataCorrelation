@@ -11,8 +11,6 @@ MISSING_VALS = [None, '', 'None', np.nan] # Below functions should implicitly ha
 
 class Validate:
     '''
-    Put them in the same class so they can inter-reference
-
     Use np.ndarray because
     (1) Easier to detect `None`
     (2) Common denominator
