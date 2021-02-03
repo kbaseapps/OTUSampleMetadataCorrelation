@@ -30,6 +30,10 @@ h1 {
   display: none;
 }
 
+body {
+  padding-top: 3px;
+}
+
 ```
 
 
@@ -129,13 +133,7 @@ ps = phyloseq(o, t, m)
 old_colnum = nsamples(ps)
 ps = prune_samples(!is.na(sample_data(ps))[,1], ps)
 
-n_dropped = old_colnum - nsamples(ps)
-if(n_dropped > 0) {
-  cat_text(sprintf(
-    'Note: %d samples dropped due to missing sample metadata', 
-    n_dropped
-  ))
-}
+n_dropped = old_colnum - nsamples(ps) # var used at end
 ```       
 
 
@@ -271,7 +269,7 @@ do_hists(filtervars, cordf)
 
 
 ```{r}
-b_keepByCor = abs(cordf$cor) > cor_cutoff
+b_keepByCor = abs(cordf$cor) >= cor_cutoff
 b_keepByCor[is.na(b_keepByCor)] = FALSE
 
 droptab$'Cut off by correlation' = sum(!b_keepByCor)
@@ -371,14 +369,21 @@ dmessage(sprintf('w_rmd: %g', w_rmd))
 dmessage(sprintf('h_rmd: %g', h_rmd))
 ```
 
-
-
 ```{r plotly, fig.height=h_rmd, fig.width=w_rmd}
 do_scatters(cordf, cor_method, num_subplots, do_tax)
 
 ```
 
+# {-}
 
+```{r warn_drop_samples}
+if(n_dropped > 0) {
+  cat_text(sprintf(
+    'Note: %d samples dropped due to missing sample metadata', 
+    n_dropped
+  ))
+}
+```
 
 ```{r write, include=FALSE}
 ### Output results to file

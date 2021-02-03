@@ -1,4 +1,4 @@
-TARGET_TESTS = taxonomy_test.py
+TARGET_TESTS = .#happy_test.py
 SERVICE = otusamplemetadatacorrelation
 SERVICE_CAPS = OTUSampleMetadataCorrelation
 SPEC_FILE = OTUSampleMetadataCorrelation.spec

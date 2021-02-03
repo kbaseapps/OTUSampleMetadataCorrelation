@@ -24,7 +24,7 @@ class TestCase(cfg.BaseTest):
 ####################################################################################################
     @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.DataFileUtil', new=lambda u: get_mock_dfu('enigma17770by511'))
     @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.KBaseReport', new=lambda u: get_mock_kbr())
-    def test_happy_large_defaultParams(self):
+    def test_large_defaultParams(self):
         '''
         '''
         ret = cfg.get_serviceImpl().run_OTUSampleMetadataCorrelation(
@@ -49,15 +49,15 @@ class TestCase(cfg.BaseTest):
 
 ####################################################################################################
 ####################################################################################################
-    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.DataFileUtil', new=lambda u: get_mock_dfu('enigma17770by511'))
+    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.DataFileUtil', new=lambda u: get_mock_dfu('enigma50by30'))
     @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.KBaseReport', new=lambda u: get_mock_kbr())
-    def test_happy_large_customParams(self):
+    def test_small_2_results(self):
         '''
         '''
         ret = cfg.get_serviceImpl().run_OTUSampleMetadataCorrelation(
                 cfg.ctx, {
-                    "amp_mat_upa": enigma17770by511,
-                    "sample_metadata": sample_metadata_17770by511,
+                    "amp_mat_upa": enigma50by30,
+                    "sample_metadata": sample_metadata_50by30,
                     "amp_params": {
                         "val_cutoff": 1,
                         "sd_cutoff": 1,
@@ -65,10 +65,10 @@ class TestCase(cfg.BaseTest):
                         "tax_field": ['taxonomy'],
                     },
                     "cor_params": {
-                        "cor_cutoff": 0.001,
-                        "cor_method": "spearman",
+                        "cor_cutoff": 0.5208,
+                        "cor_method": "kendall",
                         "p_adj_method": "bonferroni",
-                        "p_adj_cutoff": 0.99,
+                        "p_adj_cutoff": 0.99999999,
                     },
                     'workspace_name': self.wsName,
             })
@@ -79,7 +79,58 @@ class TestCase(cfg.BaseTest):
 ####################################################################################################
     @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.DataFileUtil', new=lambda u: get_mock_dfu('enigma50by30'))
     @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.KBaseReport', new=lambda u: get_mock_kbr())
-    def test_happy_small(self):
+    def test_small_3_results(self):
+        '''
+        '''
+        ret = cfg.get_serviceImpl().run_OTUSampleMetadataCorrelation(
+                cfg.ctx, {
+                    "amp_mat_upa": enigma50by30,
+                    "sample_metadata": sample_metadata_50by30,
+                    "amp_params": {
+                        "val_cutoff": 1,
+                        "sd_cutoff": 1,
+                        "tax_rank": 'genus',
+                        "tax_field": ['taxonomy'],
+                    },
+                    "cor_params": {
+                        "cor_cutoff": 0.503,
+                        "cor_method": "kendall",
+                        "p_adj_method": "bonferroni",
+                        "p_adj_cutoff": 1,
+                    },
+                    'workspace_name': self.wsName,
+            })
+
+####################################################################################################
+####################################################################################################
+    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.DataFileUtil', new=lambda u: get_mock_dfu('enigma50by30'))
+    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.KBaseReport', new=lambda u: get_mock_kbr())
+    def test_small_5_results(self):
+        '''
+        '''
+        ret = cfg.get_serviceImpl().run_OTUSampleMetadataCorrelation(
+                cfg.ctx, {
+                    "amp_mat_upa": enigma50by30,
+                    "sample_metadata": sample_metadata_50by30,
+                    "amp_params": {
+                        "val_cutoff": 1,
+                        "sd_cutoff": 1,
+                        "tax_rank": 'genus',
+                        "tax_field": ['taxonomy'],
+                    },
+                    "cor_params": {
+                        "cor_cutoff": 0.36,
+                        "cor_method": "kendall",
+                        "p_adj_method": "bonferroni",
+                        "p_adj_cutoff": 0.99999999,
+                    },
+                    'workspace_name': self.wsName,
+            })
+####################################################################################################
+####################################################################################################
+    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.DataFileUtil', new=lambda u: get_mock_dfu('enigma50by30'))
+    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.KBaseReport', new=lambda u: get_mock_kbr())
+    def test_small(self):
         '''
         '''
         ret = cfg.get_serviceImpl().run_OTUSampleMetadataCorrelation(
@@ -94,7 +145,7 @@ class TestCase(cfg.BaseTest):
                     },
                     "cor_params": {
                         "cor_cutoff": 0.01,
-                        "cor_method": "kendall",
+                        "cor_method": "pearson",
                         "p_adj_method": "BH",
                         "p_adj_cutoff": 0.9,
                     },
@@ -152,12 +203,12 @@ for key, value in TestCase.__dict__.items():
     if key.startswith('test') and callable(value):
         all_tests.append(key)
 
-happy_path_tests = ['test_happy_large_defaultParams', 'test_happy_large_customParams', 'test_happy_small']
+happy_path_tests = ['test_large_defaultParams', 'test_large_customParams', 'test_small']
 
-run_tests = ['test_happy_small']
+run_tests = ['test_small_5_results','test_small_3_results','test_small_2_results', 'test_small']
 
 
 for test in all_tests:
         if test not in run_tests:
-            #delattr(TestCase, test)
+            delattr(TestCase, test)
             pass

@@ -104,7 +104,7 @@ do_hists = function(filtervars, cordf) {
 
 ################################################################################
 do_scatters = function(cordf, cor_method, num_subplots, do_tax) {
-  ################################################################################
+################################################################################
   if (cor_method == 'kendall') {
     sym = 'τ'
   } else if (cor_method == 'pearson') {
@@ -190,7 +190,8 @@ do_scatters = function(cordf, cor_method, num_subplots, do_tax) {
     shareX=FALSE,
     shareY=FALSE, # TRUE -> axis will retain scale but points will go off graph
     titleX=TRUE,
-    titleY=TRUE
+    titleY=TRUE,
+    margin=0.08*1/r
   ) %>% layout(
     #  title=title, 
     margin=margin, # for parent figure
