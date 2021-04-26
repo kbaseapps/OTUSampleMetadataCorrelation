@@ -21,15 +21,15 @@ class TestCase(cfg.BaseTest):
 
 ####################################################################################################
 ####################################################################################################
-    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.DataFileUtil', new=lambda u: get_mock_dfu('enigma50by30'))
-    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.KBaseReport', new=lambda u: get_mock_kbr())
+    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.DataFileUtil', new=lambda u: mock_dfu)
+    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.KBaseReport', new=lambda u: mock_kbr)
     def test_nonePass_prelimFilter(self):
         '''
         All amplicons filtered out by value/sd
         (Taxonomy can't eliminate all amplicons)
         '''
-        ret = cfg.get_serviceImpl().run_OTUSampleMetadataCorrelation(
-                cfg.ctx, {
+        ret = self.serviceImpl.run_OTUSampleMetadataCorrelation(
+                self.ctx, {
                     "amp_mat_upa": enigma50by30,
                     "sample_metadata": sample_metadata_50by30,
                     "amp_params": {
@@ -51,19 +51,18 @@ class TestCase(cfg.BaseTest):
 
 ####################################################################################################
 ####################################################################################################
-    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.KBaseReport', new=lambda u: get_mock_kbr())
+    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.KBaseReport', new=lambda u: mock_kbr)
     def test_nonePass_succeedCor(self):
         # get obj with all 1s
         with patch.dict( 
             'OTUSampleMetadataCorrelation.util.kbase_obj.Var',
-            values={'dfu': get_mock_dfu('enigma50by30')}
+            values={'dfu': mock_dfu}
         ):
             obj = AmpliconMatrix(enigma50by30).obj
             obj['data']['values'] = [[1 for j in range(30)] for i in range(50)] # all 1s
             
         # integreate all-1s version into mock dfu
         dfu = get_mock_dfu(
-            'enigma50by30', 
             replace_obj={enigma50by30: obj}
         )
 
@@ -72,8 +71,8 @@ class TestCase(cfg.BaseTest):
             'OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.DataFileUtil',
             new=lambda *a, **kw: dfu
         ):
-            ret = cfg.get_serviceImpl().run_OTUSampleMetadataCorrelation(
-                    cfg.ctx, {
+            ret = self.serviceImpl.run_OTUSampleMetadataCorrelation(
+                    self.ctx, {
                         "amp_mat_upa": enigma50by30,
                         "sample_metadata": sample_metadata_50by30,
                         "amp_params": {
@@ -95,11 +94,11 @@ class TestCase(cfg.BaseTest):
 
 ####################################################################################################
 ####################################################################################################
-    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.DataFileUtil', new=lambda u: get_mock_dfu('enigma50by30'))
-    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.KBaseReport', new=lambda u: get_mock_kbr())
+    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.DataFileUtil', new=lambda u: mock_dfu)
+    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.KBaseReport', new=lambda u: mock_kbr)
     def test_nonePass_filterCor(self):
-        ret = cfg.get_serviceImpl().run_OTUSampleMetadataCorrelation(
-                cfg.ctx, {
+        ret = self.serviceImpl.run_OTUSampleMetadataCorrelation(
+                self.ctx, {
                     "amp_mat_upa": enigma50by30,
                     "sample_metadata": sample_metadata_50by30,
                     "amp_params": {
@@ -120,11 +119,11 @@ class TestCase(cfg.BaseTest):
 
 ####################################################################################################
 ####################################################################################################
-    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.DataFileUtil', new=lambda u: get_mock_dfu('enigma50by30'))
-    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.KBaseReport', new=lambda u: get_mock_kbr())
+    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.DataFileUtil', new=lambda u: mock_dfu)
+    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.KBaseReport', new=lambda u: mock_kbr)
     def test_nonePass_filterPAdj(self):
-        ret = cfg.get_serviceImpl().run_OTUSampleMetadataCorrelation(
-                cfg.ctx, {
+        ret = self.serviceImpl.run_OTUSampleMetadataCorrelation(
+                self.ctx, {
                     "amp_mat_upa": enigma50by30,
                     "sample_metadata": sample_metadata_50by30,
                     "amp_params": {
@@ -144,45 +143,10 @@ class TestCase(cfg.BaseTest):
 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    @classmethod
-    def list_tests(cls):
-        return [key for key, value in cls.__dict__.items() if type(key) == str and key.startswith('test') and callable(value)]
-
     @classmethod
     def tearDownClass(cls):
         super(cls, cls).tearDownClass()
 
         dec = '!!!' * 220
         print(dec, "DON'T FORGET TO SEE DIFF, HTML REPORT(S)", dec)
-        print('Tests run (%d): %s' % (len(cls.list_tests()), cls.list_tests()))
-        skipped_tests = list(set(all_tests) - set(cls.list_tests()))
-        print('Tests skipped (%d): %s' % (len(skipped_tests), skipped_tests))
 
-
-
-
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-all_tests = []
-for key, value in TestCase.__dict__.items():
-    if key.startswith('test') and callable(value):
-        all_tests.append(key)
-
-knit_exit_tests = ['test_nonePass_prelimFilter', 'test_nonePass_filterCor', 'test_nonePass_filterCor',  'test_nonePass_filterPAdj']
-
-run_tests = ['test_nonePass_succeedCor']
-
-
-for test in all_tests:
-        if test not in run_tests:
-            #delattr(TestCase, test)
-            pass

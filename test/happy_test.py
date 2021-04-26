@@ -22,13 +22,12 @@ class TestCase(cfg.BaseTest):
 
 ####################################################################################################
 ####################################################################################################
-    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.DataFileUtil', new=lambda u: get_mock_dfu('enigma17770by511'))
-    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.KBaseReport', new=lambda u: get_mock_kbr())
+    @unittest.skip('large, private')
     def test_large_defaultParams(self):
         '''
         '''
-        ret = cfg.get_serviceImpl().run_OTUSampleMetadataCorrelation(
-                cfg.ctx, {
+        ret = self.serviceImpl.run_OTUSampleMetadataCorrelation(
+                self.ctx, {
                     "amp_mat_upa": enigma17770by511,
                     "sample_metadata": sample_metadata_17770by511,
                     "amp_params": {
@@ -49,13 +48,13 @@ class TestCase(cfg.BaseTest):
 
 ####################################################################################################
 ####################################################################################################
-    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.DataFileUtil', new=lambda u: get_mock_dfu('enigma50by30'))
-    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.KBaseReport', new=lambda u: get_mock_kbr())
+    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.DataFileUtil', new=lambda u: mock_dfu)
+    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.KBaseReport', new=lambda u: mock_kbr)
     def test_small_2_results(self):
         '''
         '''
-        ret = cfg.get_serviceImpl().run_OTUSampleMetadataCorrelation(
-                cfg.ctx, {
+        ret = self.serviceImpl.run_OTUSampleMetadataCorrelation(
+                self.ctx, {
                     "amp_mat_upa": enigma50by30,
                     "sample_metadata": sample_metadata_50by30,
                     "amp_params": {
@@ -77,13 +76,13 @@ class TestCase(cfg.BaseTest):
 
 ####################################################################################################
 ####################################################################################################
-    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.DataFileUtil', new=lambda u: get_mock_dfu('enigma50by30'))
-    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.KBaseReport', new=lambda u: get_mock_kbr())
+    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.DataFileUtil', new=lambda u: mock_dfu)
+    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.KBaseReport', new=lambda u: mock_kbr)
     def test_small_3_results(self):
         '''
         '''
-        ret = cfg.get_serviceImpl().run_OTUSampleMetadataCorrelation(
-                cfg.ctx, {
+        ret = self.serviceImpl.run_OTUSampleMetadataCorrelation(
+                self.ctx, {
                     "amp_mat_upa": enigma50by30,
                     "sample_metadata": sample_metadata_50by30,
                     "amp_params": {
@@ -103,13 +102,13 @@ class TestCase(cfg.BaseTest):
 
 ####################################################################################################
 ####################################################################################################
-    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.DataFileUtil', new=lambda u: get_mock_dfu('enigma50by30'))
-    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.KBaseReport', new=lambda u: get_mock_kbr())
+    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.DataFileUtil', new=lambda u: mock_dfu)
+    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.KBaseReport', new=lambda u: mock_kbr)
     def test_small_5_results(self):
         '''
         '''
-        ret = cfg.get_serviceImpl().run_OTUSampleMetadataCorrelation(
-                cfg.ctx, {
+        ret = self.serviceImpl.run_OTUSampleMetadataCorrelation(
+                self.ctx, {
                     "amp_mat_upa": enigma50by30,
                     "sample_metadata": sample_metadata_50by30,
                     "amp_params": {
@@ -128,13 +127,13 @@ class TestCase(cfg.BaseTest):
             })
 ####################################################################################################
 ####################################################################################################
-    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.DataFileUtil', new=lambda u: get_mock_dfu('enigma50by30'))
-    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.KBaseReport', new=lambda u: get_mock_kbr())
+    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.DataFileUtil', new=lambda u: mock_dfu)
+    @patch_('OTUSampleMetadataCorrelation.OTUSampleMetadataCorrelationImpl.KBaseReport', new=lambda u: mock_kbr)
     def test_small(self):
         '''
         '''
-        ret = cfg.get_serviceImpl().run_OTUSampleMetadataCorrelation(
-                cfg.ctx, {
+        ret = self.serviceImpl.run_OTUSampleMetadataCorrelation(
+                self.ctx, {
                     "amp_mat_upa": enigma50by30,
                     "sample_metadata": sample_metadata_50by30,
                     "amp_params": {
@@ -156,29 +155,12 @@ class TestCase(cfg.BaseTest):
                 
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-    @classmethod
-    def list_tests(cls):
-        return [key for key, value in cls.__dict__.items() if type(key) == str and key.startswith('test') and callable(value)]
-
     @classmethod
     def tearDownClass(cls):
         super(cls, cls).tearDownClass()
 
         dec = '!!!' * 220
         print(dec, "DON'T FORGET TO SEE DIFF, HTML REPORT(S)", dec)
-        print('Tests run (%d): %s' % (len(cls.list_tests()), cls.list_tests()))
-        skipped_tests = list(set(all_tests) - set(cls.list_tests()))
-        print('Tests skipped (%d): %s' % (len(skipped_tests), skipped_tests))
-
-
-
 """
 Stuff to test:
     * unit test invalid metadata, tax table, amplicon matrix (different ways of invalid, numeric and missing)
@@ -192,23 +174,3 @@ TODOs:
 """
 
 
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-all_tests = []
-for key, value in TestCase.__dict__.items():
-    if key.startswith('test') and callable(value):
-        all_tests.append(key)
-
-happy_path_tests = ['test_large_defaultParams', 'test_large_customParams', 'test_small']
-
-run_tests = ['test_small_5_results','test_small_3_results','test_small_2_results', 'test_small']
-
-
-for test in all_tests:
-        if test not in run_tests:
-            delattr(TestCase, test)
-            pass
